@@ -104,8 +104,8 @@ const DOOM2 = (() => {
     ceilMat.specularColor  = new BABYLON.Color3(0, 0, 0);
 
     const glowMat = new BABYLON.StandardMaterial('glowMat', scene);
-    glowMat.diffuseColor   = new BABYLON.Color3(0, 0.4, 0.2);
-    glowMat.emissiveColor  = new BABYLON.Color3(0, 0.6, 0.3);
+    glowMat.diffuseColor   = new BABYLON.Color3(0.6, 0, 0.5);
+    glowMat.emissiveColor  = new BABYLON.Color3(1, 0.1, 0.85);
 
     // Helper: box with material
     function box(name, w, h, d, x, y, z, mat) {
@@ -199,6 +199,83 @@ const DOOM2 = (() => {
     box('roomD_S', 18, 4, 0.3, 36, 2, -9, wallMat);
     box('roomD_glow', 0.1, 0.05, 16, 44.9, 0.05, 0, glowMat);
 
+
+    // ── Purple neon sign: TOCA PRINWOLF ──────────────────────────────────────
+    function makeNeonSign(scene) {
+      // Background panel
+      const panelMat = new BABYLON.StandardMaterial('signPanel', scene);
+      panelMat.diffuseColor   = new BABYLON.Color3(0.04, 0.01, 0.08);
+      panelMat.emissiveColor  = new BABYLON.Color3(0.08, 0.01, 0.12);
+      const panel = BABYLON.MeshBuilder.CreateBox('signPanel', { width: 8, height: 1.6, depth: 0.12 }, scene);
+      panel.position.set(0, 3.0, 44.8);  // north wall of Room B
+      panel.material = panelMat;
+
+      // Neon tube (emissive purple bar behind text plane)
+      const tubeMat = new BABYLON.StandardMaterial('signTube', scene);
+      tubeMat.diffuseColor  = new BABYLON.Color3(0.5, 0, 0.9);
+      tubeMat.emissiveColor = new BABYLON.Color3(0.7, 0, 1.0);
+      tubeMat.alpha = 0.9;
+      const tube = BABYLON.MeshBuilder.CreateBox('signTube', { width: 7.6, height: 1.2, depth: 0.06 }, scene);
+      tube.position.set(0, 3.0, 44.72);
+      tube.material = tubeMat;
+
+      // Dynamic texture for the text
+      const dt = new BABYLON.DynamicTexture('signTex', { width: 1024, height: 256 }, scene, true);
+      const ctx = dt.getContext();
+
+      // Background
+      ctx.fillStyle = '#0a0015';
+      ctx.fillRect(0, 0, 1024, 256);
+
+      // Glow effect — draw text multiple times with blur
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Outer purple glow
+      ctx.save();
+      ctx.shadowColor = '#cc00ff';
+      ctx.shadowBlur = 32;
+      ctx.fillStyle = '#cc00ff';
+      ctx.font = 'bold 72px Arial';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillText('Brought to you by', 512, 80);
+        ctx.font = 'bold 88px Arial';
+        ctx.fillStyle = '#ff00ff';
+        ctx.shadowColor = '#ff00ff';
+        ctx.fillText('TOCA PRINWOLF', 512, 178);
+      }
+      ctx.restore();
+
+      // Bright white core
+      ctx.font = 'bold 72px Arial';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.shadowBlur = 0;
+      ctx.fillText('Brought to you by', 512, 80);
+      ctx.font = 'bold 88px Arial';
+      ctx.fillStyle = '#ff88ff';
+      ctx.fillText('TOCA PRINWOLF', 512, 178);
+      dt.update();
+
+      const signMat = new BABYLON.StandardMaterial('signMat', scene);
+      signMat.diffuseTexture  = dt;
+      signMat.emissiveTexture = dt;
+      signMat.emissiveColor   = new BABYLON.Color3(1, 1, 1);
+      signMat.backFaceCulling = false;
+
+      const signPlane = BABYLON.MeshBuilder.CreatePlane('signPlane', { width: 7.6, height: 1.2 }, scene);
+      signPlane.position.set(0, 3.0, 44.65);
+      signPlane.material = signMat;
+
+      // Purple point light for the sign
+      const signLight = new BABYLON.PointLight('signLight', new BABYLON.Vector3(0, 3.0, 43), scene);
+      signLight.diffuse    = new BABYLON.Color3(0.7, 0, 1);
+      signLight.intensity  = 1.5;
+      signLight.range      = 12;
+    }
+
+    makeNeonSign(scene);
+
     // ── Some crates / props scattered around ──────────────────────────────
     const crateMat = new BABYLON.StandardMaterial('crateMat', scene);
     crateMat.diffuseColor = new BABYLON.Color3(0.2, 0.15, 0.1);
@@ -213,8 +290,8 @@ const DOOM2 = (() => {
 
     // ── Glowing terminal plinths (decorative for now) ─────────────────────
     const termMat = new BABYLON.StandardMaterial('termMat', scene);
-    termMat.diffuseColor  = new BABYLON.Color3(0, 0.3, 0.5);
-    termMat.emissiveColor = new BABYLON.Color3(0, 0.4, 0.7);
+    termMat.diffuseColor  = new BABYLON.Color3(0.35, 0, 0.55);
+    termMat.emissiveColor = new BABYLON.Color3(0.5, 0, 0.8);
 
     [
       [0, 0, 36], [0, 0, -36], [36, 0, 0],
@@ -225,8 +302,8 @@ const DOOM2 = (() => {
 
       // Screen glow light
       const light = new BABYLON.PointLight(`termLight${i}`, new BABYLON.Vector3(x, 2, z), scene);
-      light.diffuse    = new BABYLON.Color3(0, 0.8, 1);
-      light.intensity  = 0.6;
+      light.diffuse    = new BABYLON.Color3(1, 0.1, 0.85);
+      light.intensity  = 0.9;
       light.range      = 8;
     });
   }
@@ -245,13 +322,13 @@ const DOOM2 = (() => {
 
     const scene = new BABYLON.Scene(engine);
     scene_ref = scene;
-    scene.clearColor = new BABYLON.Color4(0.03, 0.03, 0.06, 1);
+    scene.clearColor = new BABYLON.Color4(0.04, 0.01, 0.06, 1);
 
     // Fog for atmosphere
     scene.fogMode    = BABYLON.Scene.FOGMODE_LINEAR;
     scene.fogStart   = 20;
     scene.fogEnd     = 55;
-    scene.fogColor   = new BABYLON.Color3(0.03, 0.05, 0.04);
+    scene.fogColor   = new BABYLON.Color3(0.05, 0.01, 0.06);
 
     setProgress(15, 'Camera...');
 
@@ -274,14 +351,14 @@ const DOOM2 = (() => {
 
     // Dim ambient
     const ambient = new BABYLON.HemisphericLight('ambient', new BABYLON.Vector3(0, 1, 0), scene);
-    ambient.intensity   = 0.2;
-    ambient.diffuse     = new BABYLON.Color3(0.05, 0.15, 0.1);
-    ambient.groundColor = new BABYLON.Color3(0.02, 0.05, 0.03);
+    ambient.intensity   = 0.55;
+    ambient.diffuse     = new BABYLON.Color3(0.25, 0.05, 0.2);
+    ambient.groundColor = new BABYLON.Color3(0.1, 0.02, 0.08);
 
     // Central hub light
     const hub = new BABYLON.PointLight('hub', new BABYLON.Vector3(0, 3.5, 0), scene);
-    hub.diffuse    = new BABYLON.Color3(0, 1, 0.5);
-    hub.intensity  = 1.0;
+    hub.diffuse    = new BABYLON.Color3(1, 0.05, 0.7);
+    hub.intensity  = 1.4;
     hub.range      = 25;
 
     setProgress(40, 'Building level...');
