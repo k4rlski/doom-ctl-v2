@@ -69,7 +69,32 @@ const DOOM2 = (() => {
             ">Select</button>
           </div>
 
-          <!-- Toca Prin-Wolf -->
+          
+          <!-- Meow Cat -->
+          <div class="char-card" data-char="meow" style="
+            cursor:pointer; width:220px; border:2px solid #003355;
+            border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
+            background:linear-gradient(160deg,#00101a 0%,#000a12 100%);
+            text-align:center; transition:all 0.2s;
+            box-shadow:0 0 20px #00335540;
+          ">
+            <img src="sprites/nyan-cat.jpg" alt="Nyan Cat"
+              style="width:100%; height:100px; object-fit:cover; border-radius:6px; margin-bottom:0.8rem;"/>
+            <div style="font-size:1.3rem; font-weight:bold; color:#00ccff; margin-bottom:0.4rem;">Meow Cat</div>
+            <div style="font-size:0.78rem; color:#88aacc; line-height:1.5;">
+              30% size &middot; Rainbow trail<br>Secret tiny mode &#128049;
+            </div>
+            <button class="select-btn" data-char="meow" style="
+              margin-top:1.2rem; padding:0.55rem 1.6rem;
+              background:transparent; border:1.5px solid #00ccff;
+              color:#00ccff; border-radius:6px; cursor:pointer;
+              font-family:'Courier New',monospace; font-size:0.85rem;
+              text-transform:uppercase; letter-spacing:0.1em;
+              transition:all 0.15s;
+            ">Select</button>
+          </div>
+
+<!-- Toca Prin-Wolf -->
           <div class="char-card" data-char="toca" style="
             cursor:pointer; width:220px; border:2px solid #330055;
             border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
@@ -185,6 +210,12 @@ const DOOM2 = (() => {
 
     if (!remotes[msg.id]) {
       const remoteChar = msg.char || 'silie';
+      if (remoteChar === 'meow') {
+        const mc = buildMeowCat(scene_ref, 'remote_' + msg.id);
+        mc._baseY = 0;
+        remotes[msg.id] = { node: mc, lastSeen: Date.now() };
+        console.log('[doom2] Remote Meow joined:', msg.id);
+      } else {
       const template   = (remoteChar === chosenCharacter)
         ? silieRoot
         : (window._otherCharRoot || silieRoot);
@@ -205,6 +236,7 @@ const DOOM2 = (() => {
         remotes[msg.id] = { node: cloneRoot, lastSeen: Date.now() };
       }
       console.log('[doom2] Remote joined:', msg.id, 'as', remoteChar);
+      } // end non-meow remote
     }
 
     // Camera sends eye-height Y — subtract it so feet sit on floor
@@ -371,6 +403,44 @@ const DOOM2 = (() => {
     box('roomF_E', 0.3, 4, 16, 22, 2, -34, wallMat);
     box('roomF_W', 0.3, 4, 16, 6, 2, -34, wallMat);
     box('roomF_glow', 14, 0.05, 0.1, 14, 0.05, -41.9, glowMat);
+
+
+    // ── Hallway neon strips ─────────────────────────────────────────────────
+    const nHues = [[1,0.05,0.85],[1,0.05,0.85],[0.2,0,1],[0,1,0.5]];
+    // Floor strips — north/south corridors (z=18/-18, x=±3), east/west (x=±18, z=±3)
+    const neonDefs = [
+      {pos:[-2.9,0.05,18],sz:[0.06,0.06,14],h:0},{pos:[2.9,0.05,18],sz:[0.06,0.06,14],h:0},
+      {pos:[-2.9,0.05,-18],sz:[0.06,0.06,14],h:1},{pos:[2.9,0.05,-18],sz:[0.06,0.06,14],h:1},
+      {pos:[18,0.05,-2.9],sz:[14,0.06,0.06],h:2},{pos:[18,0.05,2.9],sz:[14,0.06,0.06],h:2},
+      {pos:[-18,0.05,-2.9],sz:[14,0.06,0.06],h:3},{pos:[-18,0.05,2.9],sz:[14,0.06,0.06],h:3},
+      {pos:[-2.9,3.9,18],sz:[0.06,0.06,14],h:0},{pos:[2.9,3.9,18],sz:[0.06,0.06,14],h:0},
+    ];
+    neonDefs.forEach(({pos,sz,h},i)=>{
+      const nm=new BABYLON.StandardMaterial('neonM'+i,scene);
+      nm.diffuseColor=new BABYLON.Color3(...nHues[h].map(v=>v*0.3));
+      nm.emissiveColor=new BABYLON.Color3(...nHues[h]);
+      const ns=BABYLON.MeshBuilder.CreateBox('neonS'+i,{width:sz[0],height:sz[1],depth:sz[2]},scene);
+      ns.position.set(...pos); ns.material=nm;
+    });
+    [[0,2,18,0],[0,2,-18,1],[18,2,0,2],[-18,2,0,3]].forEach(([x,y,z,c])=>{
+      const pl=new BABYLON.PointLight('nPL'+c,new BABYLON.Vector3(x,y,z),scene);
+      pl.diffuse=new BABYLON.Color3(...nHues[c]); pl.intensity=0.8; pl.range=10;
+    });
+
+    // ── K-pop poster (south corridor east wall) ──────────────────────────────
+    const kpTex=new BABYLON.Texture('sprites/kpop-poster.jpg',scene);
+    const kpMat=new BABYLON.StandardMaterial('kpM',scene);
+    kpMat.diffuseTexture=kpTex; kpMat.emissiveTexture=kpTex;
+    kpMat.emissiveColor=new BABYLON.Color3(0.7,0.7,0.7); kpMat.backFaceCulling=false;
+    const kpFrame=BABYLON.MeshBuilder.CreateBox('kpFrame',{width:3.2,height:2.2,depth:0.08},scene);
+    kpFrame.position.set(2.8,2.1,-18); kpFrame.rotation.y=Math.PI/2;
+    const kpFM=new BABYLON.StandardMaterial('kpFM',scene);
+    kpFM.diffuseColor=new BABYLON.Color3(0.4,0,0.6); kpFM.emissiveColor=new BABYLON.Color3(0.1,0,0.2);
+    kpFrame.material=kpFM;
+    const kpPlane=BABYLON.MeshBuilder.CreatePlane('kpPlane',{width:3.0,height:2.0},scene);
+    kpPlane.position.set(2.76,2.1,-18); kpPlane.rotation.y=-Math.PI/2; kpPlane.material=kpMat;
+    const kpSpot=new BABYLON.SpotLight('kpSpot',new BABYLON.Vector3(0,3.5,-18),new BABYLON.Vector3(1,-0.5,0),Math.PI/4,2,scene);
+    kpSpot.diffuse=new BABYLON.Color3(1,0.8,1); kpSpot.intensity=1.2; kpSpot.range=6;
 
     // ── Cloud on wall (Room B east wall) ────────────────────────────────────
     const cloudMat = new BABYLON.StandardMaterial('cloudMat', scene);
@@ -603,6 +673,81 @@ const DOOM2 = (() => {
 
     setProgress(60, 'Loading Silie...');
 
+
+    // ── Meow Cat: procedural Babylon.js model ───────────────────────────────
+    function buildMeowCat(scn, nm) {
+      const root = new BABYLON.TransformNode(nm || 'meow_cat', scn);
+      const S = 0.54; // 30% of 1.8m
+
+      const mk = (n, c, e) => { const m = new BABYLON.StandardMaterial(n, scn);
+        m.diffuseColor = new BABYLON.Color3(...c);
+        if (e) m.emissiveColor = new BABYLON.Color3(...e);
+        return m; };
+      const grey  = mk('mGrey', [0.55,0.55,0.58],[0.04,0.04,0.05]);
+      const pink  = mk('mPink', [1,0.5,0.7],[0.3,0.05,0.15]);
+      const white = mk('mWhite',[0.95,0.95,0.95]);
+      const black = mk('mBlk',  [0.1,0.1,0.1]);
+
+      const attach = (mesh) => { mesh.parent = root; return mesh; };
+
+      // Pop-Tart body
+      attach(BABYLON.MeshBuilder.CreateBox('toast',{width:S*0.9,height:S*0.7,depth:S*0.4},scn))
+        .position.set(0,S*0.55,0); root.getChildMeshes()[0].material=pink;
+
+      // Cat head
+      const head = attach(BABYLON.MeshBuilder.CreateSphere('head',{diameter:S*0.5,segments:8},scn));
+      head.position.set(S*0.38,S*0.75,0); head.material=grey;
+
+      // Ears
+      [-1,1].forEach((side,i)=>{
+        const e=attach(BABYLON.MeshBuilder.CreateCylinder('ear'+i,{height:S*0.18,diameterBottom:S*0.14,diameterTop:0.01,tessellation:4},scn));
+        e.position.set(S*0.38+side*S*0.13,S*0.95,0); e.material=grey;
+      });
+
+      // Eyes
+      [-1,1].forEach((side,i)=>{
+        const ew=attach(BABYLON.MeshBuilder.CreateSphere('eye'+i,{diameter:S*0.1},scn));
+        ew.position.set(S*0.62,S*0.78,side*S*0.12); ew.material=white;
+        const ep=attach(BABYLON.MeshBuilder.CreateSphere('pup'+i,{diameter:S*0.055},scn));
+        ep.position.set(S*0.635,S*0.78,side*S*0.12); ep.material=black;
+      });
+
+      // Blush
+      [-1,1].forEach((side,i)=>{
+        const b=attach(BABYLON.MeshBuilder.CreateSphere('blush'+i,{diameter:S*0.08},scn));
+        b.position.set(S*0.65,S*0.70,side*S*0.19); b.material=pink;
+      });
+
+      // Legs
+      [[-0.3,-0.6],[-0.3,0.6],[0.3,-0.6],[0.3,0.6]].forEach(([lx,lz],i)=>{
+        const l=attach(BABYLON.MeshBuilder.CreateCylinder('leg'+i,{height:S*0.2,diameter:S*0.12,tessellation:6},scn));
+        l.position.set(lx*S*0.7,S*0.1,lz); l.material=grey;
+      });
+
+      // Rainbow tail stripes
+      [[1,0,0],[1,0.55,0],[1,1,0],[0,0.8,0],[0,0.5,1],[0.55,0,1]].forEach(([r,g,b],i)=>{
+        const stripe=attach(BABYLON.MeshBuilder.CreateBox('str'+i,{width:S*1.6,height:S*0.065,depth:S*0.04},scn));
+        stripe.position.set(-S*1.1,S*0.28+i*S*0.072,0);
+        const sm=new BABYLON.StandardMaterial('strM'+i,scn);
+        sm.diffuseColor=new BABYLON.Color3(r,g,b);
+        sm.emissiveColor=new BABYLON.Color3(r*0.5,g*0.5,b*0.5);
+        stripe.material=sm;
+      });
+
+      // Bob animation
+      let t=Math.random()*6;
+      scn.onBeforeRenderObservable.add(()=>{ t+=0.04; root.position.y=(root._baseY||0)+Math.sin(t)*0.025; });
+      return root;
+    }
+
+    if (chosenCharacter === 'meow') {
+      const meow = buildMeowCat(scene, 'silie_local');
+      meow._baseY = 0; meow.position.set(3, 0, 3); silieRoot = meow;
+      BABYLON.SceneLoader.ImportMeshAsync('','sprites/','silie.glb',scene).then(r=>{
+        const or=r.meshes.find(m=>!m.parent)||r.meshes[0];
+        if(or){or.position.set(-999,0,-999);or.name='other_char_template';window._otherCharRoot=or;}
+      }).catch(()=>{});
+    } else {
     const charFile = chosenCharacter === 'toca' ? 'toca.glb' : 'silie.glb';
     try {
       const result = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', charFile, scene);
@@ -690,6 +835,7 @@ const DOOM2 = (() => {
       box.material = m;
       silieRoot = box;
     }
+    } // end non-meow
 
     setProgress(80, 'Multiplayer...');
     connectWS();
