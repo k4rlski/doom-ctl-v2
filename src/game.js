@@ -184,27 +184,33 @@ const DOOM2 = (() => {
     if (!scene_ref || !silieRoot) return;
 
     if (!remotes[msg.id]) {
-      // Clone Silie for this player
-      const entries   = scene_ref.getNodeByName('__root__');
-      const cloneRoot = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
-
-      // Use the correct template for this remote player's chosen character
       const remoteChar = msg.char || 'silie';
-      const myChar     = chosenCharacter;
-      const template   = (remoteChar === myChar) ? silieRoot : (window._otherCharRoot || silieRoot);
+      const template   = (remoteChar === chosenCharacter)
+        ? silieRoot
+        : (window._otherCharRoot || silieRoot);
 
-      template.getChildMeshes(false).forEach(m => {
-        const clone = m.clone('r_' + msg.id + '_' + m.name, cloneRoot);
-        if (clone) clone.isVisible = true;
-      });
-
-      remotes[msg.id] = { node: cloneRoot, lastSeen: Date.now() };
-      console.log('[doom2] Remote player joined:', msg.id);
+      // instantiateHierarchy preserves full parent/child FBX structure
+      const cloneRoot = template.instantiateHierarchy(null, { doNotInstantiate: true });
+      if (!cloneRoot) {
+        // fallback: manual mesh clone
+        const fb = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
+        template.getChildMeshes(false).forEach(m => {
+          const c = m.clone('r_' + msg.id + '_' + m.name, fb);
+          if (c) c.isVisible = true;
+        });
+        remotes[msg.id] = { node: fb, lastSeen: Date.now() };
+      } else {
+        cloneRoot.name = 'remote_' + msg.id;
+        cloneRoot.getChildMeshes(false).forEach(m => { m.isVisible = true; });
+        remotes[msg.id] = { node: cloneRoot, lastSeen: Date.now() };
+      }
+      console.log('[doom2] Remote joined:', msg.id, 'as', remoteChar);
     }
 
-    // Update position
+    // Camera sends eye-height Y — subtract it so feet sit on floor
     const r = remotes[msg.id];
-    r.node.position.set(msg.x || 0, msg.y || 0, msg.z || 0);
+    const eyeH = 1.8;
+    r.node.position.set(msg.x || 0, (msg.y || eyeH) - eyeH, msg.z || 0);
     r.lastSeen = Date.now();
   }
 
@@ -607,18 +613,30 @@ const DOOM2 = (() => {
       if (root) {
         root.name = 'silie_local';
 
-        // Blender-exported GLB: Y-up corrected, units in meters
-        // Compute bounding box to auto-scale to ~1.8m and floor-align
-        root.computeWorldMatrix(true);
-        const bb = root.getHierarchyBoundingVectors();
-        const rawH = bb.max.y - bb.min.y;
-        const scale = rawH > 0.1 ? 1.8 / rawH : 1.0;
+        // Compute bounding box from individual child meshes (reliable on GLTF)
+        result.meshes.forEach(m => m.computeWorldMatrix(true));
+        let minY = Infinity, maxY = -Infinity;
+        result.meshes.forEach(m => {
+          if (!m.getBoundingInfo) return;
+          const bi = m.getBoundingInfo();
+          minY = Math.min(minY, bi.boundingBox.minimumWorld.y);
+          maxY = Math.max(maxY, bi.boundingBox.maximumWorld.y);
+        });
+        const rawH  = maxY - minY;
+        const scale = (rawH > 0.1 && rawH < 1000) ? 1.8 / rawH : 1.0;
         root.scaling.setAll(scale);
-        root.computeWorldMatrix(true);
-        const bb2 = root.getHierarchyBoundingVectors();
-        // Place so feet are at y=0
-        root.position.set(3, -bb2.min.y, 3);
-        console.log(`[doom2] Silie: rawH=${rawH.toFixed(2)} scale=${scale.toFixed(3)} floorY=${(-bb2.min.y).toFixed(3)}`);
+        result.meshes.forEach(m => m.computeWorldMatrix(true));
+
+        // Re-measure after scaling to get floor offset
+        let minY2 = Infinity;
+        result.meshes.forEach(m => {
+          if (!m.getBoundingInfo) return;
+          m.computeWorldMatrix(true);
+          minY2 = Math.min(minY2, m.getBoundingInfo().boundingBox.minimumWorld.y);
+        });
+        // Set root y so feet sit exactly at y=0
+        root.position.set(3, -minY2, 3);
+        console.log(`[doom2] char bounds: rawH=${rawH.toFixed(2)} scale=${scale.toFixed(3)} minY2=${minY2.toFixed(3)}`);
 
         // Store for cloning remote players (this player's chosen char)
         silieRoot = root;
@@ -628,13 +646,24 @@ const DOOM2 = (() => {
         BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', otherFile, scene).then(r => {
           const otherRoot = r.meshes.find(m => !m.parent) || r.meshes[0];
           if (otherRoot) {
-            otherRoot.computeWorldMatrix(true);
-            const ob = otherRoot.getHierarchyBoundingVectors();
-            const oh = ob.max.y - ob.min.y;
-            otherRoot.scaling.setAll(oh > 0.1 ? 1.8/oh : 1.0);
-            otherRoot.computeWorldMatrix(true);
-            const ob2 = otherRoot.getHierarchyBoundingVectors();
-            otherRoot.position.set(-999, -ob2.min.y, -999); // park off-level
+            r.meshes.forEach(m => m.computeWorldMatrix(true));
+            let oMinY = Infinity, oMaxY = -Infinity;
+            r.meshes.forEach(m => {
+              if (!m.getBoundingInfo) return;
+              const bi = m.getBoundingInfo();
+              oMinY = Math.min(oMinY, bi.boundingBox.minimumWorld.y);
+              oMaxY = Math.max(oMaxY, bi.boundingBox.maximumWorld.y);
+            });
+            const oH = oMaxY - oMinY;
+            otherRoot.scaling.setAll((oH > 0.1 && oH < 1000) ? 1.8/oH : 1.0);
+            r.meshes.forEach(m => m.computeWorldMatrix(true));
+            let oMinY2 = Infinity;
+            r.meshes.forEach(m => {
+              if (!m.getBoundingInfo) return;
+              m.computeWorldMatrix(true);
+              oMinY2 = Math.min(oMinY2, m.getBoundingInfo().boundingBox.minimumWorld.y);
+            });
+            otherRoot.position.set(-999, -oMinY2, -999); // park off-level
             otherRoot.name = 'other_char_template';
             window._otherCharRoot = otherRoot;
             if (r.animationGroups?.length > 0) r.animationGroups[0].stop();
