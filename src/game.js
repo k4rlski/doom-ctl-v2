@@ -240,6 +240,7 @@ const DOOM2 = (() => {
       stencil: true,
       adaptToDeviceRatio: true,
     });
+    engine.resize();
     window.addEventListener('resize', () => engine.resize());
 
     const scene = new BABYLON.Scene(engine);
