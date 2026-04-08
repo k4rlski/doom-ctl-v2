@@ -16,6 +16,138 @@ const DOOM2 = (() => {
     status.textContent = msg;
   }
 
+  // ── Character Select Screen ───────────────────────────────────────────────
+  let chosenCharacter = null; // 'silie' or 'toca'
+
+  function showCharacterSelect() {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.id = 'char-select';
+      overlay.style.cssText = `
+        position:fixed; inset:0; z-index:100;
+        background:#04010a;
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        font-family:'Courier New',monospace; color:#fff;
+      `;
+
+      overlay.innerHTML = `
+        <div style="text-align:center; margin-bottom:2.5rem;">
+          <div style="font-size:0.75rem; letter-spacing:0.3em; color:#ff00cc; text-transform:uppercase; margin-bottom:0.5rem;">
+            doom-ctl v2
+          </div>
+          <h1 style="font-size:2.4rem; color:#fff; text-shadow:0 0 24px #ff00cc, 0 0 60px #aa00aa; margin:0 0 0.4rem;">
+            Choose Your Character
+          </h1>
+          <p style="font-size:0.85rem; color:#cc88ff; opacity:0.7;">
+            Your selection becomes your in-game avatar
+          </p>
+        </div>
+
+        <div style="display:flex; gap:3rem; justify-content:center; flex-wrap:wrap;">
+
+          <!-- Silie -->
+          <div class="char-card" data-char="silie" style="
+            cursor:pointer; width:220px; border:2px solid #550055;
+            border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
+            background:linear-gradient(160deg,#1a0022 0%,#0a000f 100%);
+            text-align:center; transition:all 0.2s;
+            box-shadow:0 0 20px #55005540;
+          ">
+            <div style="font-size:4rem; margin-bottom:0.8rem;">👧</div>
+            <div style="font-size:1.3rem; font-weight:bold; color:#ff88ff; margin-bottom:0.4rem;">Silie</div>
+            <div style="font-size:0.78rem; color:#cc88cc; line-height:1.5;">
+              Teal hair · Anime style<br>Original character
+            </div>
+            <button class="select-btn" data-char="silie" style="
+              margin-top:1.2rem; padding:0.55rem 1.6rem;
+              background:transparent; border:1.5px solid #ff00cc;
+              color:#ff00cc; border-radius:6px; cursor:pointer;
+              font-family:'Courier New',monospace; font-size:0.85rem;
+              text-transform:uppercase; letter-spacing:0.1em;
+              transition:all 0.15s;
+            ">Select</button>
+          </div>
+
+          <!-- Toca Prin-Wolf -->
+          <div class="char-card" data-char="toca" style="
+            cursor:pointer; width:220px; border:2px solid #330055;
+            border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
+            background:linear-gradient(160deg,#100020 0%,#06000f 100%);
+            text-align:center; transition:all 0.2s;
+            box-shadow:0 0 20px #33005540;
+          ">
+            <div style="font-size:4rem; margin-bottom:0.8rem;">🐺</div>
+            <div style="font-size:1.3rem; font-weight:bold; color:#cc88ff; margin-bottom:0.4rem;">Toca Prin-Wolf</div>
+            <div style="font-size:0.78rem; color:#aa88cc; line-height:1.5;">
+              61 meshes · Full rig<br>Brought to you by TOCA
+            </div>
+            <button class="select-btn" data-char="toca" style="
+              margin-top:1.2rem; padding:0.55rem 1.6rem;
+              background:transparent; border:1.5px solid #aa00ff;
+              color:#aa00ff; border-radius:6px; cursor:pointer;
+              font-family:'Courier New',monospace; font-size:0.85rem;
+              text-transform:uppercase; letter-spacing:0.1em;
+              transition:all 0.15s;
+            ">Select</button>
+          </div>
+        </div>
+
+        <p style="margin-top:2.5rem; font-size:0.75rem; color:#440044; letter-spacing:0.15em;">
+          WASD · MOUSE · SPACE TO JUMP
+        </p>
+      `;
+
+      document.body.appendChild(overlay);
+
+      // Hover effects
+      overlay.querySelectorAll('.char-card').forEach(card => {
+        card.addEventListener('mouseenter', () => {
+          card.style.borderColor = '#ff00cc';
+          card.style.boxShadow = '0 0 40px #ff00cc55';
+          card.style.transform = 'translateY(-4px)';
+        });
+        card.addEventListener('mouseleave', () => {
+          const isSelected = card.dataset.char === chosenCharacter;
+          card.style.borderColor = card.dataset.char === 'silie' ? '#550055' : '#330055';
+          card.style.boxShadow   = card.dataset.char === 'silie' ? '0 0 20px #55005540' : '0 0 20px #33005540';
+          card.style.transform   = '';
+        });
+      });
+
+      // Click to select
+      overlay.querySelectorAll('.select-btn, .char-card').forEach(el => {
+        el.addEventListener('click', (e) => {
+          const char = e.currentTarget.dataset.char;
+          if (!char) return;
+          chosenCharacter = char;
+
+          // Flash selected state then fade out
+          overlay.querySelectorAll('.char-card').forEach(c => {
+            c.style.opacity = c.dataset.char === char ? '1' : '0.3';
+          });
+          overlay.querySelectorAll('.select-btn').forEach(b => {
+            if (b.dataset.char === char) {
+              b.textContent = '✓ Entering...';
+              b.style.background = char === 'silie' ? '#ff00cc22' : '#aa00ff22';
+            }
+          });
+
+          setTimeout(() => {
+            overlay.style.transition = 'opacity 0.4s';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+              overlay.remove();
+              resolve(char);
+            }, 420);
+          }, 500);
+        });
+      });
+    });
+  }
+
+
+
   // ── WebSocket / Multiplayer ────────────────────────────────────────────────
   const WS_TOKEN   = 'b571e78fd651706ada84b3d017bab50ba50aa1046d69c44e';
   const myId       = 'p2_' + Math.random().toString(36).slice(2, 7);
@@ -56,8 +188,12 @@ const DOOM2 = (() => {
       const entries   = scene_ref.getNodeByName('__root__');
       const cloneRoot = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
 
-      // Clone all meshes from the loaded model
-      silieRoot.getChildMeshes(false).forEach(m => {
+      // Use the correct template for this remote player's chosen character
+      const remoteChar = msg.char || 'silie';
+      const myChar     = chosenCharacter;
+      const template   = (remoteChar === myChar) ? silieRoot : (window._otherCharRoot || silieRoot);
+
+      template.getChildMeshes(false).forEach(m => {
         const clone = m.clone('r_' + msg.id + '_' + m.name, cloneRoot);
         if (clone) clone.isVisible = true;
       });
@@ -397,6 +533,11 @@ const DOOM2 = (() => {
 
   // ── Main init ─────────────────────────────────────────────────────────────
   async function init() {
+    // Show character select first
+    setProgress(0, 'Choose your character...');
+    chosenCharacter = await showCharacterSelect();
+    console.log('[doom2] Chosen character:', chosenCharacter);
+
     setProgress(5, 'Creating engine...');
 
     const engine = new BABYLON.Engine(canvas, true, {
@@ -456,9 +597,10 @@ const DOOM2 = (() => {
 
     setProgress(60, 'Loading Silie...');
 
+    const charFile = chosenCharacter === 'toca' ? 'toca.glb' : 'silie.glb';
     try {
-      const result = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', 'silie.glb', scene);
-      console.log('[doom2] Silie loaded:', result.meshes.length, 'meshes');
+      const result = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', charFile, scene);
+      console.log('[doom2] Character loaded:', charFile, result.meshes.length, 'meshes');
 
       // Find the root and fix scale/orientation
       const root = result.meshes.find(m => !m.parent) || result.meshes[0];
@@ -478,27 +620,29 @@ const DOOM2 = (() => {
         root.position.set(3, -bb2.min.y, 3);
         console.log(`[doom2] Silie: rawH=${rawH.toFixed(2)} scale=${scale.toFixed(3)} floorY=${(-bb2.min.y).toFixed(3)}`);
 
-        // Store for cloning remote players
+        // Store for cloning remote players (this player's chosen char)
         silieRoot = root;
         root.setEnabled(true);
-
-        // Also load Toca as a companion character standing nearby
-        try {
-          const toca = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', 'toca.glb', scene);
-          const tocaRoot = toca.meshes.find(m => !m.parent) || toca.meshes[0];
-          if (tocaRoot) {
-            tocaRoot.computeWorldMatrix(true);
-            const tb = tocaRoot.getHierarchyBoundingVectors();
-            const th = tb.max.y - tb.min.y;
-            const ts = th > 0.1 ? 1.8 / th : 1.0;
-            tocaRoot.scaling.setAll(ts);
-            tocaRoot.computeWorldMatrix(true);
-            const tb2 = tocaRoot.getHierarchyBoundingVectors();
-            tocaRoot.position.set(-3, -tb2.min.y, 3);
-            if (toca.animationGroups?.length > 0) toca.animationGroups[0].start(true);
-            console.log('[doom2] Toca loaded alongside Silie');
+        // Pre-load the OTHER character silently so remotes using it can be cloned
+        const otherFile = chosenCharacter === 'toca' ? 'silie.glb' : 'toca.glb';
+        BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', otherFile, scene).then(r => {
+          const otherRoot = r.meshes.find(m => !m.parent) || r.meshes[0];
+          if (otherRoot) {
+            otherRoot.computeWorldMatrix(true);
+            const ob = otherRoot.getHierarchyBoundingVectors();
+            const oh = ob.max.y - ob.min.y;
+            otherRoot.scaling.setAll(oh > 0.1 ? 1.8/oh : 1.0);
+            otherRoot.computeWorldMatrix(true);
+            const ob2 = otherRoot.getHierarchyBoundingVectors();
+            otherRoot.position.set(-999, -ob2.min.y, -999); // park off-level
+            otherRoot.name = 'other_char_template';
+            window._otherCharRoot = otherRoot;
+            if (r.animationGroups?.length > 0) r.animationGroups[0].stop();
+            console.log('[doom2] Other char pre-loaded:', otherFile);
           }
-        } catch(te) { console.warn('[doom2] toca.glb not loaded:', te.message); }
+        }).catch(() => {});
+
+
       }
 
       // Play first animation if any
@@ -528,6 +672,7 @@ const DOOM2 = (() => {
         ws.send(JSON.stringify({
           type: 'player', id: myId,
           x: p.x, y: p.y, z: p.z,
+          char: chosenCharacter,
           token: WS_TOKEN,
         }));
       }
