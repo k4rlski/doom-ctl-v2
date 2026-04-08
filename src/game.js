@@ -200,6 +200,93 @@ const DOOM2 = (() => {
     box('roomD_glow', 0.1, 0.05, 16, 44.9, 0.05, 0, glowMat);
 
 
+    // ── Room E: West Chamber ───────────────────────────────────────────────
+    floor('corr_W_floor', 16, 6, -18, 0);
+    ceil ('corr_W_ceil',  16, 6, -18, 0);
+    box('corr_W_N', 16, 4, 0.3, -18, 2,  3, wallMat);
+    box('corr_W_S', 16, 4, 0.3, -18, 2, -3, wallMat);
+
+    floor('roomE_floor', 18, 18, -36, 0);
+    ceil ('roomE_ceil',  18, 18, -36, 0);
+    box('roomE_W', 0.3, 4, 18, -45, 2, 0, wallMat);
+    box('roomE_E1', 0.3, 4, 6,  -27, 2,  6, wallMat);
+    box('roomE_E2', 0.3, 4, 6,  -27, 2, -6, wallMat);
+    box('roomE_N', 18, 4, 0.3, -36, 2,  9, wallMat);
+    box('roomE_S', 18, 4, 0.3, -36, 2, -9, wallMat);
+    box('roomE_glow', 0.1, 0.05, 16, -44.9, 0.05, 0, glowMat);
+
+    // ── Room F: Southeast (diagonal shortcut feel) ──────────────────────────
+    floor('corr_SE_floor', 6, 12, 6, -21);
+    ceil ('corr_SE_ceil',  6, 12, 6, -21);
+    box('corr_SE_W', 0.3, 4, 12, 3, 2, -21, wallMat);
+    box('corr_SE_E', 0.3, 4, 12, 9, 2, -21, wallMat);
+
+    floor('roomF_floor', 16, 16, 14, -34);
+    ceil ('roomF_ceil',  16, 16, 14, -34);
+    box('roomF_N1', 5, 4, 0.3, 8, 2, -27, wallMat);
+    box('roomF_N2', 5, 4, 0.3, 18, 2, -27, wallMat);
+    box('roomF_S', 16, 4, 0.3, 14, 2, -42, wallMat);
+    box('roomF_E', 0.3, 4, 16, 22, 2, -34, wallMat);
+    box('roomF_W', 0.3, 4, 16, 6, 2, -34, wallMat);
+    box('roomF_glow', 14, 0.05, 0.1, 14, 0.05, -41.9, glowMat);
+
+    // ── Cloud on wall (Room B east wall) ────────────────────────────────────
+    const cloudMat = new BABYLON.StandardMaterial('cloudMat', scene);
+    cloudMat.diffuseColor  = new BABYLON.Color3(0.9, 0.8, 1.0);
+    cloudMat.emissiveColor = new BABYLON.Color3(0.3, 0.1, 0.4);
+    cloudMat.alpha = 0.85;
+    // Cloud = cluster of overlapping ellipsoids on the east wall of Room B
+    const cloudParts = [
+      [0, 0,   0.55, 0.38, 0.25],
+      [0.55, 0.15, 0.4, 0.3, 0.2],
+      [-0.5, 0.1,  0.42, 0.32, 0.2],
+      [0.25, -0.2, 0.35, 0.28, 0.18],
+      [-0.2, -0.18,0.35, 0.3, 0.18],
+    ];
+    cloudParts.forEach(([dx, dy, rx, ry, rz], i) => {
+      const s = BABYLON.MeshBuilder.CreateSphere(`cloud${i}`,
+        { diameterX: rx*2, diameterY: ry*2, diameterZ: rz*2, segments: 8 }, scene);
+      s.position.set(8.85 + rz, 2.8 + dy, 36 + dx);
+      s.rotation.y = Math.PI / 2;
+      s.material = cloudMat;
+    });
+
+    // ── Flower pots scattered on floor ──────────────────────────────────────
+    const potMat = new BABYLON.StandardMaterial('potMat', scene);
+    potMat.diffuseColor  = new BABYLON.Color3(0.5, 0.2, 0.1);
+    potMat.emissiveColor = new BABYLON.Color3(0.15, 0.04, 0.02);
+    const soilMat = new BABYLON.StandardMaterial('soilMat', scene);
+    soilMat.diffuseColor = new BABYLON.Color3(0.25, 0.12, 0.06);
+    const plantMat = new BABYLON.StandardMaterial('plantMat', scene);
+    plantMat.diffuseColor  = new BABYLON.Color3(0.1, 0.7, 0.2);
+    plantMat.emissiveColor = new BABYLON.Color3(0.02, 0.2, 0.05);
+
+    const potPositions = [
+      [7, 7], [-7, 7], [7, -7], [-7, -7],   // hub corners
+      [2, 36], [-2, 36], [2, -36], [-2, -36], // room centres
+      [36, 2], [36, -2], [-36, 2], [-36, -2],
+    ];
+    potPositions.forEach(([px, pz], i) => {
+      // Pot body
+      const pot = BABYLON.MeshBuilder.CreateCylinder(`pot${i}`, {
+        height: 0.45, diameterTop: 0.32, diameterBottom: 0.24, tessellation: 12
+      }, scene);
+      pot.position.set(px, 0.225, pz);
+      pot.material = potMat;
+      // Soil disc
+      const soil = BABYLON.MeshBuilder.CreateCylinder(`soil${i}`, {
+        height: 0.05, diameter: 0.30, tessellation: 12
+      }, scene);
+      soil.position.set(px, 0.47, pz);
+      soil.material = soilMat;
+      // Plant (little cluster of spheres)
+      [0, 0.12, -0.1, 0.1, -0.08].forEach((dx, j) => {
+        const leaf = BABYLON.MeshBuilder.CreateSphere(`leaf${i}_${j}`, { diameter: 0.18 + j*0.02, segments: 6 }, scene);
+        leaf.position.set(px + dx*0.6, 0.62 + j*0.06, pz + (j%2===0?0:dx));
+        leaf.material = plantMat;
+      });
+    });
+
     // ── Purple neon sign: TOCA PRINWOLF ──────────────────────────────────────
     function makeNeonSign(scene) {
       // Background panel
@@ -373,20 +460,25 @@ const DOOM2 = (() => {
       const result = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', 'silie.glb', scene);
       console.log('[doom2] Silie loaded:', result.meshes.length, 'meshes');
 
-      // Find the root and scale/position her
+      // Find the root and fix scale/orientation
       const root = result.meshes.find(m => !m.parent) || result.meshes[0];
       if (root) {
         root.name = 'silie_local';
-        root.position.set(3, 0, 3);
 
-        // Auto-detect scale: bounding box should be ~1.8m tall
+        // FabConvert GLB from FBX: model is in cm, Y-axis flipped
+        // Scale 0.01 = cm→m, rotation.x = flip upside-down Y axis
+        root.scaling.setAll(0.01);
+        root.rotation.x = Math.PI;   // un-flip the upside-down FBX export
+
+        // Compute real height after scaling to verify
         root.computeWorldMatrix(true);
         const bb = root.getHierarchyBoundingVectors();
-        const height = bb.max.y - bb.min.y;
-        const targetH = 1.8;
-        const scale   = height > 0 ? targetH / height : 0.01;
-        root.scaling.setAll(scale);
-        console.log(`[doom2] Silie height=${height.toFixed(2)}, scale=${scale.toFixed(4)}`);
+        const h = Math.abs(bb.max.y - bb.min.y);
+        console.log(`[doom2] Silie height after fix: ${h.toFixed(2)}m`);
+
+        // Place her standing on the floor
+        // With rotation.x=PI, min.y is now the top; position at floor so feet touch y=0
+        root.position.set(3, -bb.min.y, 3);
 
         // Store for cloning remote players
         silieRoot = root;
@@ -460,6 +552,30 @@ const DOOM2 = (() => {
 
     setProgress(98, 'Starting...');
     engine.runRenderLoop(() => scene.render());
+
+    // ── Jump (Space bar) ────────────────────────────────────────────────────
+    let jumping = false;
+    let jumpVel = 0;
+    const groundY = 1.8; // camera eye height at floor
+    window.addEventListener('keydown', (e) => {
+      if ((e.code === 'Space') && !jumping) {
+        jumping  = true;
+        jumpVel  = 7;
+        e.preventDefault();
+      }
+    });
+    scene.onBeforeRenderObservable.add(() => {
+      if (jumping) {
+        const dt = engine.getDeltaTime() / 1000;
+        jumpVel        -= 18 * dt;
+        camera.position.y += jumpVel * dt;
+        if (camera.position.y <= groundY) {
+          camera.position.y = groundY;
+          jumping = false;
+          jumpVel = 0;
+        }
+      }
+    });
 
     // Lock pointer on click for FPS feel
     canvas.addEventListener('click', () => canvas.requestPointerLock());
