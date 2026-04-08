@@ -173,6 +173,72 @@ const DOOM2 = (() => {
 
 
 
+  // ── Meow Cat: procedural Babylon.js model ───────────────────────────────
+    function buildMeowCat(scn, nm) {
+    const root = new BABYLON.TransformNode(nm || 'meow_cat', scn);
+    const S = 0.54; // 30% of 1.8m
+
+    const mk = (n, c, e) => { const m = new BABYLON.StandardMaterial(n, scn);
+      m.diffuseColor = new BABYLON.Color3(...c);
+      if (e) m.emissiveColor = new BABYLON.Color3(...e);
+      return m; };
+    const grey  = mk('mGrey', [0.55,0.55,0.58],[0.04,0.04,0.05]);
+    const pink  = mk('mPink', [1,0.5,0.7],[0.3,0.05,0.15]);
+    const white = mk('mWhite',[0.95,0.95,0.95]);
+    const black = mk('mBlk',  [0.1,0.1,0.1]);
+
+    const attach = (mesh) => { mesh.parent = root; return mesh; };
+
+    // Pop-Tart body
+    attach(BABYLON.MeshBuilder.CreateBox('toast',{width:S*0.9,height:S*0.7,depth:S*0.4},scn))
+      .position.set(0,S*0.55,0); root.getChildMeshes()[0].material=pink;
+
+    // Cat head
+    const head = attach(BABYLON.MeshBuilder.CreateSphere('head',{diameter:S*0.5,segments:8},scn));
+    head.position.set(S*0.38,S*0.75,0); head.material=grey;
+
+    // Ears
+    [-1,1].forEach((side,i)=>{
+      const e=attach(BABYLON.MeshBuilder.CreateCylinder('ear'+i,{height:S*0.18,diameterBottom:S*0.14,diameterTop:0.01,tessellation:4},scn));
+      e.position.set(S*0.38+side*S*0.13,S*0.95,0); e.material=grey;
+    });
+
+    // Eyes
+    [-1,1].forEach((side,i)=>{
+      const ew=attach(BABYLON.MeshBuilder.CreateSphere('eye'+i,{diameter:S*0.1},scn));
+      ew.position.set(S*0.62,S*0.78,side*S*0.12); ew.material=white;
+      const ep=attach(BABYLON.MeshBuilder.CreateSphere('pup'+i,{diameter:S*0.055},scn));
+      ep.position.set(S*0.635,S*0.78,side*S*0.12); ep.material=black;
+    });
+
+    // Blush
+    [-1,1].forEach((side,i)=>{
+      const b=attach(BABYLON.MeshBuilder.CreateSphere('blush'+i,{diameter:S*0.08},scn));
+      b.position.set(S*0.65,S*0.70,side*S*0.19); b.material=pink;
+    });
+
+    // Legs
+    [[-0.3,-0.6],[-0.3,0.6],[0.3,-0.6],[0.3,0.6]].forEach(([lx,lz],i)=>{
+      const l=attach(BABYLON.MeshBuilder.CreateCylinder('leg'+i,{height:S*0.2,diameter:S*0.12,tessellation:6},scn));
+      l.position.set(lx*S*0.7,S*0.1,lz); l.material=grey;
+    });
+
+    // Rainbow tail stripes
+    [[1,0,0],[1,0.55,0],[1,1,0],[0,0.8,0],[0,0.5,1],[0.55,0,1]].forEach(([r,g,b],i)=>{
+      const stripe=attach(BABYLON.MeshBuilder.CreateBox('str'+i,{width:S*1.6,height:S*0.065,depth:S*0.04},scn));
+      stripe.position.set(-S*1.1,S*0.28+i*S*0.072,0);
+      const sm=new BABYLON.StandardMaterial('strM'+i,scn);
+      sm.diffuseColor=new BABYLON.Color3(r,g,b);
+      sm.emissiveColor=new BABYLON.Color3(r*0.5,g*0.5,b*0.5);
+      stripe.material=sm;
+    });
+
+    // Bob animation
+    let t=Math.random()*6;
+    scn.onBeforeRenderObservable.add(()=>{ t+=0.04; root.position.y=(root._baseY||0)+Math.sin(t)*0.025; });
+    return root;
+  }
+
   // ── WebSocket / Multiplayer ────────────────────────────────────────────────
   const WS_TOKEN   = 'b571e78fd651706ada84b3d017bab50ba50aa1046d69c44e';
   const myId       = 'p2_' + Math.random().toString(36).slice(2, 7);
@@ -630,8 +696,8 @@ const DOOM2 = (() => {
 
     // Fog for atmosphere
     scene.fogMode    = BABYLON.Scene.FOGMODE_LINEAR;
-    scene.fogStart   = 20;
-    scene.fogEnd     = 55;
+    scene.fogStart   = 40;
+    scene.fogEnd     = 90;
     scene.fogColor   = new BABYLON.Color3(0.05, 0.01, 0.06);
 
     setProgress(15, 'Camera...');
@@ -642,6 +708,7 @@ const DOOM2 = (() => {
     camera.speed        = 0.2;
     camera.angularSpeed = 0.005;
     camera.minZ         = 0.1;
+    camera.maxZ         = 500;
     camera.ellipsoid    = new BABYLON.Vector3(0.4, 0.9, 0.4);
     camera.checkCollisions = true;
     scene.gravity       = new BABYLON.Vector3(0, -0.98, 0);
@@ -668,77 +735,17 @@ const DOOM2 = (() => {
     setProgress(40, 'Building level...');
     buildLevel(scene);
 
-    // Enable collisions on all meshes
-    scene.meshes.forEach(m => { m.checkCollisions = true; });
+    // Collisions only on structural geometry — not crates, pots, signs etc.
+    const COLL_PFX = ['hub_','corr_','room','ceil ','floor','neon'];
+    scene.onReadyObservable.addOnce(() => {
+      scene.meshes.forEach(m => {
+        m.checkCollisions = COLL_PFX.some(p => m.name.startsWith(p));
+      });
+    });
 
     setProgress(60, 'Loading Silie...');
 
 
-    // ── Meow Cat: procedural Babylon.js model ───────────────────────────────
-    function buildMeowCat(scn, nm) {
-      const root = new BABYLON.TransformNode(nm || 'meow_cat', scn);
-      const S = 0.54; // 30% of 1.8m
-
-      const mk = (n, c, e) => { const m = new BABYLON.StandardMaterial(n, scn);
-        m.diffuseColor = new BABYLON.Color3(...c);
-        if (e) m.emissiveColor = new BABYLON.Color3(...e);
-        return m; };
-      const grey  = mk('mGrey', [0.55,0.55,0.58],[0.04,0.04,0.05]);
-      const pink  = mk('mPink', [1,0.5,0.7],[0.3,0.05,0.15]);
-      const white = mk('mWhite',[0.95,0.95,0.95]);
-      const black = mk('mBlk',  [0.1,0.1,0.1]);
-
-      const attach = (mesh) => { mesh.parent = root; return mesh; };
-
-      // Pop-Tart body
-      attach(BABYLON.MeshBuilder.CreateBox('toast',{width:S*0.9,height:S*0.7,depth:S*0.4},scn))
-        .position.set(0,S*0.55,0); root.getChildMeshes()[0].material=pink;
-
-      // Cat head
-      const head = attach(BABYLON.MeshBuilder.CreateSphere('head',{diameter:S*0.5,segments:8},scn));
-      head.position.set(S*0.38,S*0.75,0); head.material=grey;
-
-      // Ears
-      [-1,1].forEach((side,i)=>{
-        const e=attach(BABYLON.MeshBuilder.CreateCylinder('ear'+i,{height:S*0.18,diameterBottom:S*0.14,diameterTop:0.01,tessellation:4},scn));
-        e.position.set(S*0.38+side*S*0.13,S*0.95,0); e.material=grey;
-      });
-
-      // Eyes
-      [-1,1].forEach((side,i)=>{
-        const ew=attach(BABYLON.MeshBuilder.CreateSphere('eye'+i,{diameter:S*0.1},scn));
-        ew.position.set(S*0.62,S*0.78,side*S*0.12); ew.material=white;
-        const ep=attach(BABYLON.MeshBuilder.CreateSphere('pup'+i,{diameter:S*0.055},scn));
-        ep.position.set(S*0.635,S*0.78,side*S*0.12); ep.material=black;
-      });
-
-      // Blush
-      [-1,1].forEach((side,i)=>{
-        const b=attach(BABYLON.MeshBuilder.CreateSphere('blush'+i,{diameter:S*0.08},scn));
-        b.position.set(S*0.65,S*0.70,side*S*0.19); b.material=pink;
-      });
-
-      // Legs
-      [[-0.3,-0.6],[-0.3,0.6],[0.3,-0.6],[0.3,0.6]].forEach(([lx,lz],i)=>{
-        const l=attach(BABYLON.MeshBuilder.CreateCylinder('leg'+i,{height:S*0.2,diameter:S*0.12,tessellation:6},scn));
-        l.position.set(lx*S*0.7,S*0.1,lz); l.material=grey;
-      });
-
-      // Rainbow tail stripes
-      [[1,0,0],[1,0.55,0],[1,1,0],[0,0.8,0],[0,0.5,1],[0.55,0,1]].forEach(([r,g,b],i)=>{
-        const stripe=attach(BABYLON.MeshBuilder.CreateBox('str'+i,{width:S*1.6,height:S*0.065,depth:S*0.04},scn));
-        stripe.position.set(-S*1.1,S*0.28+i*S*0.072,0);
-        const sm=new BABYLON.StandardMaterial('strM'+i,scn);
-        sm.diffuseColor=new BABYLON.Color3(r,g,b);
-        sm.emissiveColor=new BABYLON.Color3(r*0.5,g*0.5,b*0.5);
-        stripe.material=sm;
-      });
-
-      // Bob animation
-      let t=Math.random()*6;
-      scn.onBeforeRenderObservable.add(()=>{ t+=0.04; root.position.y=(root._baseY||0)+Math.sin(t)*0.025; });
-      return root;
-    }
 
     if (chosenCharacter === 'meow') {
       const meow = buildMeowCat(scene, 'silie_local');
