@@ -425,7 +425,7 @@ const DOOM2 = (() => {
     camera.speed        = 0.2;
     camera.angularSpeed = 0.005;
     camera.minZ         = 0.1;
-    camera.ellipsoid    = new BABYLON.Vector3(0.5, 0.9, 0.5);
+    camera.ellipsoid    = new BABYLON.Vector3(0.4, 0.9, 0.4);
     camera.checkCollisions = true;
     scene.gravity       = new BABYLON.Vector3(0, -0.98, 0);
     camera.applyGravity = true;
@@ -465,24 +465,40 @@ const DOOM2 = (() => {
       if (root) {
         root.name = 'silie_local';
 
-        // FabConvert GLB from FBX: model is in cm, Y-axis flipped
-        // Scale 0.01 = cm→m, rotation.x = flip upside-down Y axis
-        root.scaling.setAll(0.01);
-        root.rotation.x = Math.PI;   // un-flip the upside-down FBX export
-
-        // Compute real height after scaling to verify
+        // Blender-exported GLB: Y-up corrected, units in meters
+        // Compute bounding box to auto-scale to ~1.8m and floor-align
         root.computeWorldMatrix(true);
         const bb = root.getHierarchyBoundingVectors();
-        const h = Math.abs(bb.max.y - bb.min.y);
-        console.log(`[doom2] Silie height after fix: ${h.toFixed(2)}m`);
-
-        // Place her standing on the floor
-        // With rotation.x=PI, min.y is now the top; position at floor so feet touch y=0
-        root.position.set(3, -bb.min.y, 3);
+        const rawH = bb.max.y - bb.min.y;
+        const scale = rawH > 0.1 ? 1.8 / rawH : 1.0;
+        root.scaling.setAll(scale);
+        root.computeWorldMatrix(true);
+        const bb2 = root.getHierarchyBoundingVectors();
+        // Place so feet are at y=0
+        root.position.set(3, -bb2.min.y, 3);
+        console.log(`[doom2] Silie: rawH=${rawH.toFixed(2)} scale=${scale.toFixed(3)} floorY=${(-bb2.min.y).toFixed(3)}`);
 
         // Store for cloning remote players
         silieRoot = root;
         root.setEnabled(true);
+
+        // Also load Toca as a companion character standing nearby
+        try {
+          const toca = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', 'toca.glb', scene);
+          const tocaRoot = toca.meshes.find(m => !m.parent) || toca.meshes[0];
+          if (tocaRoot) {
+            tocaRoot.computeWorldMatrix(true);
+            const tb = tocaRoot.getHierarchyBoundingVectors();
+            const th = tb.max.y - tb.min.y;
+            const ts = th > 0.1 ? 1.8 / th : 1.0;
+            tocaRoot.scaling.setAll(ts);
+            tocaRoot.computeWorldMatrix(true);
+            const tb2 = tocaRoot.getHierarchyBoundingVectors();
+            tocaRoot.position.set(-3, -tb2.min.y, 3);
+            if (toca.animationGroups?.length > 0) toca.animationGroups[0].start(true);
+            console.log('[doom2] Toca loaded alongside Silie');
+          }
+        } catch(te) { console.warn('[doom2] toca.glb not loaded:', te.message); }
       }
 
       // Play first animation if any
