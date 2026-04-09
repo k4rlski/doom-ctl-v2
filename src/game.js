@@ -644,7 +644,12 @@ const DOOM2 = (() => {
     // ── Room C: South Chamber ────────────────────────────────────────────
     floor('roomC_floor', 18, 18, 0, -36);
     ceil ('roomC_ceil',  18, 18, 0, -36);
-    box('roomC_S', 18, 4, 0.3,  0, 2, -45, wallMat);
+    box('roomC_S1', 6, 4, 0.3, -6, 2, -45, wallMat);
+    box('roomC_S2', 6, 4, 0.3,  6, 2, -45, wallMat);
+    floor('cafCorr_floor', 6, 18, 0, -53);
+    ceil('cafCorr_ceil',   6, 18, 0, -53);
+    box('cafCorr_W', 0.3, 4, 18, -3, 2, -53, wallMat);
+    box('cafCorr_E', 0.3, 4, 18,  3, 2, -53, wallMat);
     box('roomC_N1', 6, 4, 0.3, -6, 2, -27, wallMat);
     box('roomC_N2', 6, 4, 0.3,  6, 2, -27, wallMat);
     box('roomC_E', 0.3, 4, 18,  9, 2, -36, wallMat);
@@ -1166,6 +1171,17 @@ const DOOM2 = (() => {
         const text = chatInput.value.trim();
         if (!text) return;
         chatInput.value = '';
+        if (text === '/no-meow') {
+          window._meowEnabled = false;
+          addChatMsg('System', '🔇 Cat sounds muted. /meow to unmute.', '#888'); return;
+        }
+        if (text === '/meow') {
+          window._meowEnabled = true;
+          addChatMsg('System', '🔊 Cat sounds on!', '#888'); return;
+        }
+        if (text === '/help') {
+          addChatMsg('System', 'Commands: /meow  /no-meow  /help', '#888'); return;
+        }
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
             type: 'chat', id: myId,
@@ -1251,7 +1267,7 @@ const DOOM2 = (() => {
 
       // Floor — warm tile
       const cafeFloor = BABYLON.MeshBuilder.CreateGround('cafeFloor',{width:CW,height:CD},scene);
-      cafeFloor.position.set(CX, 0, CZ); cafeFloor.material = tileMat;
+      cafeFloor.position.set(CX, 0.005, CZ); cafeFloor.material = tileMat;
 
       // Ceiling — warm cream with exposed beams
       const cafeCeil = BABYLON.MeshBuilder.CreateGround('cafeCeil',{width:CW,height:CD},scene);
@@ -1302,6 +1318,7 @@ const DOOM2 = (() => {
       signMat2.emissiveColor=new BABYLON.Color3(1,1,1); signMat2.backFaceCulling=false;
       const signPlane=BABYLON.MeshBuilder.CreatePlane('ccSign',{width:9,height:2.2},scene);
       signPlane.position.set(CX, 3.8, CZ-CD/2+0.4);
+      signPlane.rotation.y = Math.PI;
       signPlane.material=signMat2;
       // Pink glow light under sign
       const signLight=new BABYLON.PointLight('ccSignLight',new BABYLON.Vector3(CX,3,CZ-CD/2+1),scene);
@@ -1436,7 +1453,7 @@ const DOOM2 = (() => {
       menuMat2.emissiveColor=new BABYLON.Color3(0.7,0.7,0.7); menuMat2.backFaceCulling=false;
       const menuBoard=BABYLON.MeshBuilder.CreatePlane('menuBoard',{width:2.8,height:2.8},scene);
       menuBoard.position.set(CX+CW/2-0.4, 2.5, CZ-4);
-      menuBoard.rotation.y=-Math.PI/2;
+      menuBoard.rotation.y=Math.PI/2;
       menuBoard.material=menuMat2;
 
       // ── String lights across ceiling ────────────────────────────────────────
@@ -1484,11 +1501,11 @@ const DOOM2 = (() => {
       // Patio floor (stone)
       const stoneMat=mk('stone',[0.75,0.72,0.68]);
       const patioFloor=BABYLON.MeshBuilder.CreateGround('patio',{width:CW,height:24},scene);
-      patioFloor.position.set(CX,0,OZ); patioFloor.material=stoneMat;
+      patioFloor.position.set(CX,0.005,OZ); patioFloor.material=stoneMat;
 
       // Grass beyond patio
       const grassField=BABYLON.MeshBuilder.CreateGround('grass',{width:60,height:30},scene);
-      grassField.position.set(CX,0,OZ+20); grassField.material=grassMat;
+      grassField.position.set(CX,0.006,OZ+20); grassField.material=grassMat;
 
       // Patio low walls
       box('patioW_E',0.3,0.9,24,CX+CW/2,0.45,OZ,brickMat);
@@ -1558,7 +1575,7 @@ const DOOM2 = (() => {
     scene.onReadyObservable.addOnce(() => {
       // 1. First pass: assign checkCollisions on structural meshes
       const FLOOR_PFX = ['hub_floor','hub_ceil','corr_','roomA','roomB','roomC','roomD','roomE','roomF',
-                         'cafeFloor','cafeW_','cafeCon','cafeConn','patio','patioW'];
+                         'cafeFloor','cafeW_','cafeCon','cafeConn','cafCorr','patio','patioW'];
       scene.meshes.forEach(m => {
         m.checkCollisions = FLOOR_PFX.some(p => m.name.startsWith(p));
       });
@@ -1580,10 +1597,9 @@ const DOOM2 = (() => {
       });
 
       // 3. Enable gravity 800ms after scene ready (models + physics settled)
-      setTimeout(() => {
-        camera.applyGravity = true;
-        console.log('[doom2] Gravity enabled');
-      }, 800);
+      camera.applyGravity = true;
+      camera.position.y = 1.82;
+      console.log('[doom2] Gravity enabled');
 
       console.log('[doom2] Scene ready, collisions set, decorations frozen');
     });
@@ -1730,7 +1746,7 @@ const DOOM2 = (() => {
           const dt = engine.getDeltaTime() / 1000;
           meowTimer -= dt;
           if (meowTimer <= 0) {
-            playMeow();
+            if (window._meowEnabled !== false) playMeow();
             meowTimer = 4 + Math.random() * 8;
           }
 
