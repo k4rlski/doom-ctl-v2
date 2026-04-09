@@ -1,0 +1,36 @@
+# doom-ctl-v2 server config
+# Copy to doom-ctl.yml and fill in real values
+
+auth:
+  token: your-ws-auth-token-here  # must match WS_TOKEN in src/game.js
+
+mars:
+  url: https://mars.auto-ctl.io
+
+server:
+  port: 3667  # WebSocket server port (nginx proxies /ws here)
+
+servers:
+  rodan:
+    host: 172.237.7.10
+    key: ~/.ssh/id_rsa
+    user: root
+  hiro:
+    host: 45.33.114.131
+    key: ~/.ssh/id_rsa
+    user: root
+
+tools:
+  dns-ctl:
+    cmd_prefix: dns-ctl
+    server: rodan
+    presets:
+      - list-domains
+      - info {domain}
+      - lookup {domain}
+  bkup-ctl:
+    cmd_prefix: cd /opt/bkup-ctl && python3 bkup-ctl.py
+    server: hiro
+    presets:
+      - status
+      - list
