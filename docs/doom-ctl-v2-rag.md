@@ -287,3 +287,90 @@ systemctl restart doom-ctl-v2
 - doom-ctl v1: k4rlski/doom-ctl — https://doom.auto-ctl.io
 - DNS: dns-ctl on rodan — `doom2 A 74.207.245.247` (DNSimple)
 - SSL cert: `/etc/letsencrypt/live/doom2.auto-ctl.io/` expires 2026-07-07
+
+---
+
+## Gravity / Collision System — Definitive Implementation (2026-04-09)
+
+### The Problem History
+Multiple patch attempts failed because:
+1. `freezeWorldMatrix()` on floor meshes silently breaks collision detection
+2. Setting `checkCollisions` retroactively (prefix-list in onReady) was unreliable
+3. Gravity enabled too early races with collision initialization
+
+### Current Working Implementation
+
+**Rule: Set collisions at mesh creation, not retroactively.**
+
+```js
+// In buildLevel floor() helper:
+function floor(name, w, d, x, z) {
+  const f = BABYLON.MeshBuilder.CreateGround(name, {...}, scene);
+  f.position.set(x, 0, z);
+  f.material = floorMat;
+  f.checkCollisions = true;  // ← set immediately, never changed
+  return f;
+}
+```
+
+cafeFloor and patioFloor in buildCatCafe also set `checkCollisions=true` explicitly.
+
+**Rule: onReadyObservable ONLY defers gravity. Never touches collisions.**
+
+```js
+scene.onReadyObservable.addOnce(() => {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    // 2 frames after scene ready
+    camera.position.y = Math.max(camera.position.y, 1.85);
+    camera.applyGravity = true;
+  }));
+});
+```
+
+**Rule: Never freeze structural meshes.**
+
+`freezeWorldMatrix()` only on decorative meshes (tables, cakes, trees etc).
+Floors and walls NEVER get frozen.
+
+### Debugging Falls
+Open browser console. Look for:
+```
+[doom2] Gravity ON. Collision floors: 25 hub_floor,corr_N_floor,...
+```
+If count is 0 → a floor() call lost its checkCollisions somewhere.
+If count < 10 → some floors missing, check buildCatCafe explicit tags.
+
+### When Things Break (Recovery)
+```bash
+# Restore from last known-good commit
+git log --oneline -10
+git show <hash>:src/game.js > /tmp/game_good.js
+cp /tmp/game_good.js src/game.js
+# Then apply only surgical patches, never full block replacements
+```
+
+Last known-good with café: commit `2f9fa02`
+
+---
+
+## 3D Model Format Notes
+
+**GLB (GLTF Binary)** — the format we use. Correct for Babylon.js.
+- Exported via Blender 4.0 from FBX
+- `export_yup=True` in Blender fixes FBX Y-axis (models right-side-up)
+- Auto-scaled via bounding box: `1.8 / rawHeight`
+- Floor offset: `root.position.y = -minY2` (feet on floor)
+
+**NOT compatible with our engine:**
+- PNG spritesheets (2D only, e.g. GraphicRiver cat sprites)
+- OBJ files (no animations)
+- FBX directly (must convert via Blender first)
+
+**Good sources for 3D cat models:**
+- Sketchfab.com — free/paid GLB downloads
+- Unity Asset Store → FBX → Blender → GLB
+- Mixamo (Adobe, free) — rigged characters with animations, exports FBX
+
+**NPC cats are procedural code** — no file needed, no download weight.
+Replacing them with GLB would add ~2-10MB per cat × 4 = significant load.
+Only worth it for photorealistic cats.
