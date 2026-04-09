@@ -1394,7 +1394,7 @@ const DOOM2 = (() => {
 
       // Voxel kotek positions (4 roaming cats, all use kotek.glb)
       const catStartPositions = [
-        [5, 0, 5], [-5, 0, -5], [-8, 0, -50], [8, 0, -50]
+        [5, 0, 5], [-5, 0, -5], [0, 0, -50]
       ];
 
       catStartPositions.forEach((startPos, i) => {
