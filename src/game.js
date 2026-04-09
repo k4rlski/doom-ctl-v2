@@ -1213,13 +1213,32 @@ const DOOM2 = (() => {
     // ── Roaming NPC Meow Cats ────────────────────────────────────────────────
     function spawnRoamingCats(scene) {
       // Meow sound via Web Audio API (synthesized — no file needed)
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      // Resume AudioContext on first user gesture (browser policy)
-      const resumeAudio = () => { audioCtx.resume(); document.removeEventListener('click', resumeAudio); document.removeEventListener('keydown', resumeAudio); };
-      document.addEventListener('click', resumeAudio);
-      document.addEventListener('keydown', resumeAudio);
+      // Preload the real meow MP3 — browser policy: plays after first user gesture
+      const meowAudio = new Audio('sprites/meow.mp3');
+      meowAudio.preload = 'auto';
+      let meowUnlocked = false;
+      const unlockMeow = () => {
+        if (meowUnlocked) return;
+        meowUnlocked = true;
+        // Silent play+pause to unlock audio on iOS/Chrome
+        meowAudio.play().then(() => meowAudio.pause()).catch(() => {});
+        document.removeEventListener('click', unlockMeow);
+        document.removeEventListener('keydown', unlockMeow);
+        document.removeEventListener('touchstart', unlockMeow);
+      };
+      document.addEventListener('click', unlockMeow);
+      document.addEventListener('keydown', unlockMeow);
+      document.addEventListener('touchstart', unlockMeow);
 
       function playMeow() {
+        if (!meowUnlocked) return;
+        // Clone the audio so overlapping meows from different cats work
+        const m = meowAudio.cloneNode();
+        m.volume = 0.55 + Math.random() * 0.3;
+        m.playbackRate = 0.88 + Math.random() * 0.24; // slight pitch variation per cat
+        m.play().catch(() => {});
+      }
+      function _oldSynthMeow_unused() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const t = audioCtx.currentTime;
         const dur = 0.65;
@@ -1291,7 +1310,7 @@ const DOOM2 = (() => {
         lfo.start(t); osc.start(t); noise.start(t);
         lfo.stop(t + dur + 0.1);
         osc.stop(t + dur + 0.1);
-      }
+      } // end _oldSynthMeow_unused
 
       const catStartPositions = [
         [5, 0, 5], [-5, 0, -5], [0, 0, 36], [36, 0, 0]
