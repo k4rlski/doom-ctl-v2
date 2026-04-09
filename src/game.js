@@ -1179,8 +1179,19 @@ const DOOM2 = (() => {
           window._meowEnabled = true;
           addChatMsg('System', '🔊 Cat sounds on!', '#888'); return;
         }
+        if (text === '/fly') {
+          camera.applyGravity = false;
+          camera._flying = true;
+          addChatMsg('System', '🕊 Fly mode ON — WASD to move, mouse to aim up/down. /land to return.', '#00ccff'); return;
+        }
+        if (text === '/land') {
+          camera._flying = false;
+          camera.applyGravity = true;
+          camera.position.y = Math.max(camera.position.y, 1.82);
+          addChatMsg('System', '🦶 Landed. Gravity restored.', '#00ccff'); return;
+        }
         if (text === '/help') {
-          addChatMsg('System', 'Commands: /meow  /no-meow  /help', '#888'); return;
+          addChatMsg('System', 'Commands: /fly  /land  /meow  /no-meow  /help', '#888'); return;
         }
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
