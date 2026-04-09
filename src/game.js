@@ -256,6 +256,11 @@ const DOOM2 = (() => {
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
+        if (msg.type === 'chat' && msg.id !== myId) {
+          const cn = { silie:'Silie', toca:'Toca', meow:'Meow Cat' };
+          const colors = { silie:'#ff88ff', toca:'#cc88ff', meow:'#00ccff' };
+          addChatMsg(cn[msg.char] || 'Player', msg.text || '', colors[msg.char] || '#ccc');
+        }
         if (msg.type === 'player' && msg.id !== myId && scene_ref) {
           handleRemotePlayer(msg);
         }
@@ -305,10 +310,11 @@ const DOOM2 = (() => {
       } // end non-meow remote
     }
 
-    // Camera sends eye-height Y — subtract it so feet sit on floor
+    // Use the sender's floor offset if provided, otherwise assume eye height
     const r = remotes[msg.id];
     const eyeH = 1.8;
-    r.node.position.set(msg.x || 0, (msg.y || eyeH) - eyeH, msg.z || 0);
+    const fo   = (msg.fo !== undefined) ? msg.fo : eyeH;
+    r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo, msg.z || 0);
     r.lastSeen = Date.now();
   }
 
@@ -788,6 +794,7 @@ const DOOM2 = (() => {
         });
         // Set root y so feet sit exactly at y=0
         root.position.set(3, -minY2, 3);
+        window._myFloorOffset = minY2; // broadcast so remotes floor-align correctly
         console.log(`[doom2] char bounds: rawH=${rawH.toFixed(2)} scale=${scale.toFixed(3)} minY2=${minY2.toFixed(3)}`);
 
         // Store for cloning remote players (this player's chosen char)
@@ -855,6 +862,7 @@ const DOOM2 = (() => {
           type: 'player', id: myId,
           x: p.x, y: p.y, z: p.z,
           char: chosenCharacter,
+          fo: window._myFloorOffset || 0,
           token: WS_TOKEN,
         }));
       }
@@ -879,6 +887,94 @@ const DOOM2 = (() => {
       hud.textContent = `● ${n} player${n !== 1 ? 's' : ''} online`;
     }, 1000);
 
+
+    // ── Chat bar ─────────────────────────────────────────────────────────────
+    const chatMessages = [];
+    const MAX_CHAT = 8;
+    const charNames = { silie: 'Silie', toca: 'Toca', meow: 'Meow Cat' };
+
+    const chatWrap = document.createElement('div');
+    chatWrap.style.cssText = `
+      position:fixed; bottom:0; left:0; right:0; z-index:20;
+      display:flex; flex-direction:column; pointer-events:none;
+    `;
+    document.body.appendChild(chatWrap);
+
+    const chatLog = document.createElement('div');
+    chatLog.style.cssText = `
+      padding:6px 10px; max-height:160px; overflow-y:auto;
+      background:linear-gradient(transparent, rgba(0,0,0,0.7));
+      font-family:'Courier New',monospace; font-size:0.8rem;
+      pointer-events:none;
+    `;
+    chatWrap.appendChild(chatLog);
+
+    const chatInputRow = document.createElement('div');
+    chatInputRow.style.cssText = `
+      display:flex; background:rgba(0,0,0,0.75); border-top:1px solid #ff00cc44;
+      pointer-events:all;
+    `;
+    const chatName = document.createElement('span');
+    chatName.style.cssText = `padding:6px 8px; color:#ff88ff; font-family:'Courier New',monospace; font-size:0.8rem; white-space:nowrap;`;
+    chatName.textContent = (charNames[chosenCharacter] || 'Player') + ':';
+    const chatInput = document.createElement('input');
+    chatInput.type = 'text';
+    chatInput.placeholder = 'Type and press Enter to chat...';
+    chatInput.style.cssText = `
+      flex:1; background:transparent; border:none; outline:none;
+      color:#fff; font-family:'Courier New',monospace; font-size:0.8rem;
+      padding:6px 8px;
+    `;
+    chatInputRow.appendChild(chatName);
+    chatInputRow.appendChild(chatInput);
+    chatWrap.appendChild(chatInputRow);
+
+    function addChatMsg(sender, text, color) {
+      chatMessages.push({ sender, text, color });
+      if (chatMessages.length > MAX_CHAT) chatMessages.shift();
+      chatLog.innerHTML = chatMessages.map(m =>
+        '<div style="color:' + (m.color||'#ccc') + ';margin:1px 0;">' +
+        '<span style="color:#ff88ff">' + m.sender + ':</span> ' +
+        m.text.replace(/</g,'&lt;') + '</div>'
+      ).join('');
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    chatInput.addEventListener('keydown', e => {
+      if (e.code === 'Space') e.stopPropagation(); // don't jump while typing
+    });
+    chatInput.addEventListener('focus', () => { canvas.removeEventListener('click', ()=>{}); });
+
+    chatInput.addEventListener('keyup', e => {
+      if (e.key === 'Enter') {
+        const text = chatInput.value.trim();
+        if (!text) return;
+        chatInput.value = '';
+        const sender = charNames[chosenCharacter] || 'Player';
+        addChatMsg(sender, text, '#fff');
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'chat', id: myId,
+            char: chosenCharacter, text,
+            token: WS_TOKEN,
+          }));
+        }
+      }
+    });
+
+    // Press T to focus chat
+    window.addEventListener('keydown', e => {
+      if (e.key === 't' || e.key === 'T') {
+        if (document.activeElement !== chatInput) {
+          chatInput.focus();
+          e.preventDefault();
+        }
+      }
+      if (e.key === 'Escape') chatInput.blur();
+    });
+
+    addChatMsg('System', 'Press T to chat. WASD+mouse to move. SPACE to jump.', '#888');
+
     // Crosshair
     const xh = document.createElement('div');
     xh.style.cssText = `
@@ -892,6 +988,91 @@ const DOOM2 = (() => {
       <line x1="0" y1="7" x2="14" y2="7" stroke="#00ff88" stroke-width="1" opacity="0.7"/>
     </svg>`;
     document.body.appendChild(xh);
+
+
+    // ── Roaming NPC Meow Cats ────────────────────────────────────────────────
+    function spawnRoamingCats(scene) {
+      // Meow sound via Web Audio API (synthesized — no file needed)
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      function playMeow() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        const t = audioCtx.currentTime;
+        // Meow: rise then fall pitch
+        osc.frequency.setValueAtTime(600, t);
+        osc.frequency.linearRampToValueAtTime(900, t + 0.15);
+        osc.frequency.linearRampToValueAtTime(550, t + 0.45);
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.linearRampToValueAtTime(0, t + 0.5);
+        osc.start(t); osc.stop(t + 0.5);
+      }
+
+      const catStartPositions = [
+        [5, 0, 5], [-5, 0, -5], [0, 0, 36], [36, 0, 0]
+      ];
+
+      catStartPositions.forEach((startPos, i) => {
+        const cat = buildMeowCat(scene, 'npc_cat_' + i);
+        cat.scaling.setAll(0.28); // slightly smaller than player Meow Cat
+        cat.position.set(...startPos);
+        cat._baseY = startPos[1];
+
+        // Roam: pick random waypoint, move toward it, pause, repeat
+        let targetX = startPos[0], targetZ = startPos[2];
+        let pausing = false, pauseTimer = 0;
+        const speed = 0.02 + Math.random() * 0.015;
+
+        function newWaypoint() {
+          // Roam in a bounded area around start
+          targetX = startPos[0] + (Math.random() - 0.5) * 14;
+          targetZ = startPos[2] + (Math.random() - 0.5) * 14;
+          // Clamp inside level
+          targetX = Math.max(-9, Math.min(9, targetX));
+          targetZ = Math.max(-9, Math.min(9, targetZ));
+        }
+        newWaypoint();
+
+        // Random meow timer
+        let meowTimer = 2 + Math.random() * 6;
+
+        scene.onBeforeRenderObservable.add(() => {
+          const dt = engine.getDeltaTime() / 1000;
+          meowTimer -= dt;
+          if (meowTimer <= 0) {
+            playMeow();
+            meowTimer = 4 + Math.random() * 8;
+          }
+
+          if (pausing) {
+            pauseTimer -= dt;
+            if (pauseTimer <= 0) { pausing = false; newWaypoint(); }
+            return;
+          }
+
+          const dx = targetX - cat.position.x;
+          const dz = targetZ - cat.position.z;
+          const dist = Math.sqrt(dx*dx + dz*dz);
+
+          if (dist < 0.3) {
+            pausing = true;
+            pauseTimer = 1 + Math.random() * 3;
+            return;
+          }
+
+          cat.position.x += (dx / dist) * speed;
+          cat.position.z += (dz / dist) * speed;
+          // Face direction of travel
+          cat.rotation.y = Math.atan2(dx, dz);
+        });
+      });
+    }
+
+    // Spawn cats after a short delay (so audio context can activate on user gesture)
+    setTimeout(() => spawnRoamingCats(scene), 2000);
 
     setProgress(98, 'Starting...');
     engine.runRenderLoop(() => scene.render());

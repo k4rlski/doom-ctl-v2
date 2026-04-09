@@ -135,6 +135,11 @@ wss.on('connection', (ws, req) => {
         break;
 
       // Multiplayer: broadcast player position to all other clients
+      case 'chat':
+        // Relay chat to all other players
+        broadcastExcept(ws, { type: 'chat', id: msg.id, char: msg.char, text: msg.text });
+        break;
+
       case 'player':
         ws._playerId = msg.id; // remember for disconnect cleanup
         console.log('[mp] player update from', msg.id, 'clients:', wss.clients.size);
