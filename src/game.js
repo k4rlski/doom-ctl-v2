@@ -594,7 +594,7 @@ const DOOM2 = (() => {
           if (lm) {
             const fo2 = (lm.fo !== undefined) ? lm.fo : 1.8;
             root.position.set(lm.x || 0, (lm.y || 1.8) - fo2 - (root._remoteFloorOffset || 0), lm.z || 0);
-            if (lm.angle !== undefined) root.rotation.y = lm.angle + Math.PI / 2;
+            if (lm.angle !== undefined) root.rotation.y = lm.angle;
           }
 
           console.log('[doom2] Remote loaded:', msg.id, 'as', remoteChar,
@@ -615,7 +615,7 @@ const DOOM2 = (() => {
     const fo = (msg.fo !== undefined) ? msg.fo : eyeH;
     r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo - (r.node._remoteFloorOffset || 0), msg.z || 0);
     if (msg.angle !== undefined) {
-      r.node.rotation.y = msg.angle + Math.PI / 2;
+      r.node.rotation.y = msg.angle;
     }
   }
 
