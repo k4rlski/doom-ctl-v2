@@ -1275,8 +1275,8 @@ const DOOM2 = (() => {
 
       // Walls
       box('cafeW_N', CW, 4.5, 0.3, CX, 2.25, CZ-CD/2, wallCafeMat);
-      box('cafeW_E', 0.3, 4.5, CD, CX+CW/2, 2.25, CZ, brickMat);
-      box('cafeW_W', 0.3, 4.5, CD, CX-CW/2, 2.25, CZ, brickMat);
+
+
       // South wall has opening to outdoor patio (leave 8-unit gap)
   
   
@@ -1448,8 +1448,9 @@ const DOOM2 = (() => {
       menuMat2.diffuseTexture=menuTex; menuMat2.emissiveTexture=menuTex;
       menuMat2.emissiveColor=new BABYLON.Color3(0.7,0.7,0.7); menuMat2.backFaceCulling=false;
       const menuBoard=BABYLON.MeshBuilder.CreatePlane('menuBoard',{width:2.8,height:2.8},scene);
-      menuBoard.position.set(CX+CW/2-0.4, 2.5, CZ-4);
+      menuBoard.position.set(CX+CW/2-0.18, 2.5, CZ-4);
       menuBoard.rotation.y=Math.PI/2;
+      menuBoard.scaling.set(0.65,0.65,0.65);
       menuBoard.material=menuMat2;
 
       // ── String lights across ceiling ────────────────────────────────────────
