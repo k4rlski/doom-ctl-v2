@@ -1402,34 +1402,29 @@ const DOOM2 = (() => {
           const kr = r.meshes.find(m => !m.parent) || r.meshes[0];
           if (!kr) return;
 
-          // Auto-scale to ~35cm
-          kr.computeWorldMatrix(true);
-          let kMinY = Infinity, kMaxY = -Infinity;
+          // Make all meshes visible explicitly
           r.meshes.forEach(m => {
-            if (!m.getBoundingInfo) return;
-            const bi = m.getBoundingInfo().boundingBox;
-            kMinY = Math.min(kMinY, bi.minimumWorld.y);
-            kMaxY = Math.max(kMaxY, bi.maximumWorld.y);
+            m.isVisible = true;
+            m.setEnabled(true);
           });
-          const kH = kMaxY - kMinY;
-          const kS = kH > 0 ? 0.35 / kH : 0.01;
-          kr.scaling.setAll(kS);
-          r.meshes.forEach(m => m.computeWorldMatrix(true));
 
-          // Re-measure after scaling for floor offset
-          let kMinY2 = Infinity;
-          r.meshes.forEach(m => {
-            if (!m.getBoundingInfo) return;
-            m.computeWorldMatrix(true);
-            kMinY2 = Math.min(kMinY2, m.getBoundingInfo().boundingBox.minimumWorld.y);
-          });
-          kr.position.set(startPos[0], -kMinY2, startPos[2]);
-          kr._baseY = -kMinY2;
+          // Fixed scale — kotek.glb is already reasonable size, just shrink to cat size
+          kr.scaling.setAll(0.08); // kotek units are large — 0.08 gives ~35cm
+          kr.computeWorldMatrix(true);
+
+          // Floor placement — just place slightly above floor
+          kr.position.set(startPos[0], 0, startPos[2]);
+          kr._baseY = 0;
 
           // Enable vertex colors (Goxel bakes color into vertices)
           r.meshes.forEach(m => {
-            if (m.material) m.material.vertexColorsEnabled = true;
+            m.isVisible = true;
+            if (m.material) {
+              m.material.vertexColorsEnabled = true;
+              m.material.backFaceCulling = false;
+            }
           });
+          console.log('[doom2] Kotek', i, 'meshes:', r.meshes.length, 'at', startPos);
 
           // Bob animation (gentle up/down)
           let bt = Math.random() * Math.PI * 2;
