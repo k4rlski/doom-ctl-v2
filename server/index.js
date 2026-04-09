@@ -136,8 +136,8 @@ wss.on('connection', (ws, req) => {
 
       // Multiplayer: broadcast player position to all other clients
       case 'chat':
-        // Relay chat to all other players
-        broadcastExcept(ws, { type: 'chat', id: msg.id, char: msg.char, text: msg.text });
+        // Relay chat to ALL players including sender (group chat)
+        broadcastAll({ type: 'chat', id: msg.id, char: msg.char, text: msg.text });
         break;
 
       case 'player':
@@ -185,6 +185,15 @@ function broadcastExcept(sender, obj) {
   const msg = JSON.stringify(obj);
   wss.clients.forEach(client => {
     if (client !== sender && client.readyState === WebSocket.OPEN) {
+      client.send(msg);
+    }
+  });
+}
+
+function broadcastAll(obj) {
+  const msg = JSON.stringify(obj);
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
       client.send(msg);
     }
   });

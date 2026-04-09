@@ -256,7 +256,7 @@ const DOOM2 = (() => {
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'chat' && msg.id !== myId) {
+        if (msg.type === 'chat') {
           const cn = { silie:'Silie', toca:'Toca', meow:'Meow Cat' };
           const colors = { silie:'#ff88ff', toca:'#cc88ff', meow:'#00ccff' };
           addChatMsg(cn[msg.char] || 'Player', msg.text || '', colors[msg.char] || '#ccc');
@@ -950,8 +950,6 @@ const DOOM2 = (() => {
         const text = chatInput.value.trim();
         if (!text) return;
         chatInput.value = '';
-        const sender = charNames[chosenCharacter] || 'Player';
-        addChatMsg(sender, text, '#fff');
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
             type: 'chat', id: myId,
