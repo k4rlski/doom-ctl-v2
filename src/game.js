@@ -511,74 +511,89 @@ const DOOM2 = (() => {
 
     if (!remotes[msg.id]) {
       const remoteChar = msg.char || 'silie';
-      let node = null;
+
+      // Reserve slot immediately to prevent duplicate loads
+      remotes[msg.id] = { node: null, lastSeen: Date.now() };
 
       if (remoteChar === 'meow') {
-        node = buildMeowCat(scene_ref, 'remote_' + msg.id);
+        const node = buildMeowCat(scene_ref, 'remote_' + msg.id);
         node._baseY = 0;
+        remotes[msg.id].node = node;
+        console.log('[doom2] Remote joined:', msg.id, 'as meow');
       } else {
-        // Pick correct template — must match remote's chosen character exactly
-        const isSameChar = remoteChar === chosenCharacter;
-        const template = isSameChar ? silieRoot : window._otherCharRoot;
-        if (!template) {
-          // Other char not loaded yet — queue and retry when it loads
-          window._pendingRemotes = window._pendingRemotes || {};
-          window._pendingRemotes[msg.id] = msg;
-          console.log('[doom2] Queued remote', msg.id, 'waiting for', remoteChar, 'template');
-          return;
-        }
-        console.log('[doom2] Cloning', remoteChar, 'from', template.name);
+        // Load a fresh independent GLB for each remote player.
+        // Browser cache means no re-download — just new mesh/skeleton instances.
+        const charFile = remoteChar === 'toca' ? 'toca.glb' : 'silie.glb';
+        console.log('[doom2] Loading fresh', charFile, 'for remote', msg.id);
 
-        let cloned = null;
-        if (template.instantiateHierarchy) {
-          try {
-            cloned = template.instantiateHierarchy(null, { doNotInstantiate: true });
-          } catch(e) {
-            console.warn('[doom2] instantiateHierarchy failed:', e.message);
-          }
-        }
+        BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', charFile, scene_ref).then(result => {
+          if (!remotes[msg.id]) return; // pruned while loading
 
-        if (cloned) {
-          cloned.name = 'remote_' + msg.id;
-          if (template.scaling) cloned.scaling = template.scaling.clone();
-          node = cloned;
-        } else {
-          const root = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
-          if (template.scaling) root.scaling = template.scaling.clone();
-          template.getChildMeshes(false).forEach(m => {
-            const c = m.clone('r_' + msg.id + '_' + m.name, root);
-            if (c) { c.isVisible = true; c.setEnabled(true); }
+          const root = result.meshes.find(m => !m.parent) || result.meshes[0];
+          root.name = 'remote_' + msg.id;
+
+          // Scale to 1.8m using bounding box (same logic as local player)
+          result.meshes.forEach(m => m.computeWorldMatrix(true));
+          let minY = Infinity, maxY = -Infinity;
+          result.meshes.forEach(m => {
+            if (!m.getBoundingInfo) return;
+            const bi = m.getBoundingInfo();
+            minY = Math.min(minY, bi.boundingBox.minimumWorld.y);
+            maxY = Math.max(maxY, bi.boundingBox.maximumWorld.y);
           });
-          node = root;
-        }
+          const rawH = maxY - minY;
+          const scale = (rawH > 0.1 && rawH < 1000) ? 1.8 / rawH : 1.0;
+          root.scaling.setAll(scale);
 
-        // Force ALL descendant meshes visible (recursive — false = full hierarchy)
-        const allMeshes = node.getChildMeshes(false);
-        allMeshes.forEach(m => {
-          m.isVisible = true;
-          m.setEnabled(true);
-          m.visibility = 1;
+          // Floor-align
+          result.meshes.forEach(m => m.computeWorldMatrix(true));
+          let minY2 = Infinity;
+          result.meshes.forEach(m => {
+            if (!m.getBoundingInfo) return;
+            m.computeWorldMatrix(true);
+            minY2 = Math.min(minY2, m.getBoundingInfo().boundingBox.minimumWorld.y);
+          });
+          root._remoteFloorOffset = minY2;
+
+          // Force all meshes visible
+          result.meshes.forEach(m => {
+            m.isVisible = true;
+            m.setEnabled(true);
+            m.visibility = 1;
+          });
+
+          // Play idle animation if available
+          if (result.animationGroups?.length > 0) {
+            result.animationGroups[0].start(true);
+          }
+
+          remotes[msg.id].node = root;
+          remotes[msg.id]._animGroups = result.animationGroups;
+          console.log('[doom2] Remote loaded:', msg.id, 'as', remoteChar, result.meshes.length, 'meshes');
+        }).catch(e => {
+          console.warn('[doom2] Failed to load remote', msg.id, ':', e.message);
+          delete remotes[msg.id];
         });
-        console.log('[doom2] Clone meshes:', allMeshes.length, allMeshes.map(m => m.name + ':' + m.isVisible));
       }
-
-      remotes[msg.id] = { node, lastSeen: Date.now() };
-      console.log('[doom2] Remote joined:', msg.id, 'as', remoteChar);
     }
 
     const r = remotes[msg.id];
-    if (!r) return;
+    if (!r || !r.node) return; // still loading
     const eyeH = 1.8;
     const fo = (msg.fo !== undefined) ? msg.fo : eyeH;
-    const rx = msg.x || 0, ry = (msg.y || eyeH) - fo, rz = msg.z || 0;
-    r.node.position.set(rx, ry, rz);
+    const floorAdj = r.node._remoteFloorOffset || 0;
+    r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo - floorAdj, msg.z || 0);
     r.lastSeen = Date.now();
   }
 
   function removeRemotePlayer(id) {
     if (!remotes[id]) return;
-    remotes[id].node.getChildMeshes(false).forEach(m => m.dispose());
-    remotes[id].node.dispose();
+    const r = remotes[id];
+    if (r._animGroups) r._animGroups.forEach(ag => ag.dispose());
+    if (r.node) {
+      r.node.getChildMeshes(false).forEach(m => m.dispose());
+      r.node.dispose();
+    }
     delete remotes[id];
     console.log('[doom2] Remote player left:', id);
   }
