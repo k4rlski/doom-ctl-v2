@@ -600,14 +600,14 @@ const DOOM2 = (() => {
     floor('hub_floor', 20, 20, 0, 0);
     ceil ('hub_ceil',  20, 20, 0, 0);
     // walls (N, S, E, W) leaving gaps for corridors
-    box('hub_N1', 7, 4, 0.3, -6.5, 2,  10,  wallMat);
-    box('hub_N2', 7, 4, 0.3,  6.5, 2,  10,  wallMat);
-    box('hub_S1', 7, 4, 0.3, -6.5, 2, -10,  wallMat);
-    box('hub_S2', 7, 4, 0.3,  6.5, 2, -10,  wallMat);
-    box('hub_E1', 0.3, 4, 7,  10, 2,   6.5, wallMat);
-    box('hub_E2', 0.3, 4, 7,  10, 2,  -6.5, wallMat);
-    box('hub_W1', 0.3, 4, 7, -10, 2,   6.5, wallMat);
-    box('hub_W2', 0.3, 4, 7, -10, 2,  -6.5, wallMat);
+
+
+
+
+
+
+
+
     // Corner pillars
     [[-9,9],[9,9],[9,-9],[-9,-9]].forEach(([x,z], i) => {
       box(`pillar${i}`, 0.8, 4, 0.8, x, 2, z, wallMat);
@@ -628,8 +628,8 @@ const DOOM2 = (() => {
     floor('roomB_floor', 18, 18, 0, 36);
     ceil ('roomB_ceil',  18, 18, 0, 36);
     box('roomB_N', 18, 4, 0.3,  0, 2,  45, wallMat);
-    box('roomB_S1', 6, 4, 0.3, -6, 2,  27, wallMat);
-    box('roomB_S2', 6, 4, 0.3,  6, 2,  27, wallMat);
+
+
     box('roomB_E', 0.3, 4, 18,  9, 2,  36, wallMat);
     box('roomB_W', 0.3, 4, 18, -9, 2,  36, wallMat);
     // Glow
@@ -644,14 +644,14 @@ const DOOM2 = (() => {
     // ── Room C: South Chamber ────────────────────────────────────────────
     floor('roomC_floor', 18, 18, 0, -36);
     ceil ('roomC_ceil',  18, 18, 0, -36);
-    box('roomC_S1', 6, 4, 0.3, -6, 2, -45, wallMat);
-    box('roomC_S2', 6, 4, 0.3,  6, 2, -45, wallMat);
+
+
     floor('cafCorr_floor', 6, 18, 0, -53);
     ceil('cafCorr_ceil',   6, 18, 0, -53);
     box('cafCorr_W', 0.3, 4, 18, -3, 2, -53, wallMat);
     box('cafCorr_E', 0.3, 4, 18,  3, 2, -53, wallMat);
-    box('roomC_N1', 6, 4, 0.3, -6, 2, -27, wallMat);
-    box('roomC_N2', 6, 4, 0.3,  6, 2, -27, wallMat);
+
+
     box('roomC_E', 0.3, 4, 18,  9, 2, -36, wallMat);
     box('roomC_W', 0.3, 4, 18, -9, 2, -36, wallMat);
     box('roomC_glow', 16, 0.05, 0.1, 0, 0.05, -44.9, glowMat);
@@ -666,8 +666,8 @@ const DOOM2 = (() => {
     floor('roomD_floor', 18, 18, 36, 0);
     ceil ('roomD_ceil',  18, 18, 36, 0);
     box('roomD_E', 0.3, 4, 18,  45, 2, 0, wallMat);
-    box('roomD_W1', 0.3, 4, 6, 27, 2,  6, wallMat);
-    box('roomD_W2', 0.3, 4, 6, 27, 2, -6, wallMat);
+
+
     box('roomD_N', 18, 4, 0.3, 36, 2,  9, wallMat);
     box('roomD_S', 18, 4, 0.3, 36, 2, -9, wallMat);
     box('roomD_glow', 0.1, 0.05, 16, 44.9, 0.05, 0, glowMat);
@@ -682,8 +682,8 @@ const DOOM2 = (() => {
     floor('roomE_floor', 18, 18, -36, 0);
     ceil ('roomE_ceil',  18, 18, -36, 0);
     box('roomE_W', 0.3, 4, 18, -45, 2, 0, wallMat);
-    box('roomE_E1', 0.3, 4, 6,  -27, 2,  6, wallMat);
-    box('roomE_E2', 0.3, 4, 6,  -27, 2, -6, wallMat);
+
+
     box('roomE_N', 18, 4, 0.3, -36, 2,  9, wallMat);
     box('roomE_S', 18, 4, 0.3, -36, 2, -9, wallMat);
     box('roomE_glow', 0.1, 0.05, 16, -44.9, 0.05, 0, glowMat);
@@ -696,8 +696,8 @@ const DOOM2 = (() => {
 
     floor('roomF_floor', 16, 16, 14, -34);
     ceil ('roomF_ceil',  16, 16, 14, -34);
-    box('roomF_N1', 5, 4, 0.3, 8, 2, -27, wallMat);
-    box('roomF_N2', 5, 4, 0.3, 18, 2, -27, wallMat);
+
+
     box('roomF_S', 16, 4, 0.3, 14, 2, -42, wallMat);
     box('roomF_E', 0.3, 4, 16, 22, 2, -34, wallMat);
     box('roomF_W', 0.3, 4, 16, 6, 2, -34, wallMat);
@@ -1293,14 +1293,14 @@ const DOOM2 = (() => {
       box('cafeW_E', 0.3, 4.5, CD, CX+CW/2, 2.25, CZ, brickMat);
       box('cafeW_W', 0.3, 4.5, CD, CX-CW/2, 2.25, CZ, brickMat);
       // South wall has opening to outdoor patio (leave 8-unit gap)
-      box('cafeW_S1', 10, 4.5, 0.3, CX-9, 2.25, CZ+CD/2, wallCafeMat);
-      box('cafeW_S2', 10, 4.5, 0.3, CX+9, 2.25, CZ+CD/2, wallCafeMat);
-      box('cafeW_S_top', 8, 1.5, 0.3, CX, 3.75, CZ+CD/2, wallCafeMat); // lintel
+  
+  
+  
 
       // Connection to hub — north wall with corridor gap
-      box('cafeConn_E', 10, 4.5, 0.3, CX+9, 2.25, CZ-CD/2, wallCafeMat);
-      box('cafeConn_W', 10, 4.5, 0.3, CX-9, 2.25, CZ-CD/2, wallCafeMat);
-      box('cafeConn_top', 8, 1.5, 0.3, CX, 3.75, CZ-CD/2, wallCafeMat);
+  
+  
+  
 
       // ── CAT CAFE neon sign ──────────────────────────────────────────────────
       const signTex = new BABYLON.DynamicTexture('catcafeSign',{width:1024,height:256},scene,true);
