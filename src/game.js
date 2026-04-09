@@ -464,6 +464,11 @@ const DOOM2 = (() => {
     return root;
   }
 
+  // Chat function — defined properly in init(), stub here for connectWS scope
+  let addChatMsg = (sender, text, color) => {
+    console.log('[chat]', sender + ':', text);
+  };
+
   // ── WebSocket / Multiplayer ────────────────────────────────────────────────
   const WS_TOKEN   = 'b571e78fd651706ada84b3d017bab50ba50aa1046d69c44e';
   const myId       = 'p2_' + Math.random().toString(36).slice(2, 7);
@@ -1163,7 +1168,7 @@ const DOOM2 = (() => {
     chatInputRow.appendChild(chatInput);
     chatWrap.appendChild(chatInputRow);
 
-    function addChatMsg(sender, text, color) {
+    addChatMsg = function(sender, text, color) {
       chatMessages.push({ sender, text, color });
       if (chatMessages.length > MAX_CHAT) chatMessages.shift();
       chatLog.innerHTML = chatMessages.map(m =>
