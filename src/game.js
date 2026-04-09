@@ -933,7 +933,7 @@ const DOOM2 = (() => {
     camera.ellipsoid    = new BABYLON.Vector3(0.4, 0.9, 0.4);
     camera.checkCollisions = true;
     scene.gravity       = new BABYLON.Vector3(0, -0.98, 0);
-    camera.applyGravity = false; // enabled after scene loads
+    camera.applyGravity = true;  // on by default
     camera.keysUp    = [87, 38];
     camera.keysDown  = [83, 40];
     camera.keysLeft  = [65, 37];
@@ -1174,9 +1174,9 @@ const DOOM2 = (() => {
         }
         if (text === '/land') {
           camera._flying = false;
+          // Don't snap position — let gravity ease the camera down naturally
           camera.applyGravity = true;
-          camera.position.y = Math.max(camera.position.y, 1.82);
-          addChatMsg('System', '🦶 Landed. Gravity restored.', '#00ccff'); return;
+          addChatMsg('System', '🦶 Gravity restored — descending gently.', '#00ccff'); return;
         }
         if (text === '/help') {
           addChatMsg('System', 'Commands: /fly  /land  /meow  /no-meow  /help', '#888'); return;
