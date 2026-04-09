@@ -1368,51 +1368,28 @@ const DOOM2 = (() => {
 
     // ── Roaming NPC Meow Cats ────────────────────────────────────────────────
     function spawnRoamingCats(scene) {
-      // Meow sound via Web Audio API
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const resumeAudio = () => {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        document.removeEventListener('click', resumeAudio);
-        document.removeEventListener('keydown', resumeAudio);
-        document.removeEventListener('touchstart', resumeAudio);
+      // Real cat meow MP3 (dragon-studio, 64KB)
+      const meowAudio = new Audio('sprites/meow.mp3');
+      meowAudio.preload = 'auto';
+      let meowUnlocked = false;
+      const unlockMeow = () => {
+        if (meowUnlocked) return;
+        meowUnlocked = true;
+        meowAudio.play().then(() => meowAudio.pause()).catch(() => {});
+        document.removeEventListener('click', unlockMeow);
+        document.removeEventListener('keydown', unlockMeow);
+        document.removeEventListener('touchstart', unlockMeow);
       };
-      document.addEventListener('click', resumeAudio);
-      document.addEventListener('keydown', resumeAudio);
-      document.addEventListener('touchstart', resumeAudio);
+      document.addEventListener('click', unlockMeow);
+      document.addEventListener('keydown', unlockMeow);
+      document.addEventListener('touchstart', unlockMeow);
 
       function playMeow() {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const t = audioCtx.currentTime;
-        const dur = 0.65;
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sawtooth';
-        const lfo = audioCtx.createOscillator();
-        const lfoGain = audioCtx.createGain();
-        lfo.frequency.value = 5.5; lfoGain.gain.value = 18;
-        lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
-        osc.frequency.setValueAtTime(380, t);
-        osc.frequency.linearRampToValueAtTime(420, t+0.04);
-        osc.frequency.linearRampToValueAtTime(780, t+0.18);
-        osc.frequency.linearRampToValueAtTime(820, t+0.25);
-        osc.frequency.linearRampToValueAtTime(520, t+0.45);
-        osc.frequency.linearRampToValueAtTime(340, t+dur);
-        const f1 = audioCtx.createBiquadFilter(); f1.type='bandpass'; f1.Q.value=4;
-        f1.frequency.setValueAtTime(480,t); f1.frequency.linearRampToValueAtTime(720,t+0.2); f1.frequency.linearRampToValueAtTime(500,t+dur);
-        const f2 = audioCtx.createBiquadFilter(); f2.type='bandpass'; f2.Q.value=6;
-        f2.frequency.setValueAtTime(1200,t); f2.frequency.linearRampToValueAtTime(2200,t+0.18); f2.frequency.linearRampToValueAtTime(1100,t+dur);
-        const bufLen = audioCtx.sampleRate*0.06;
-        const noiseBuf = audioCtx.createBuffer(1,bufLen,audioCtx.sampleRate);
-        const nd = noiseBuf.getChannelData(0); for(let i=0;i<bufLen;i++) nd[i]=(Math.random()*2-1);
-        const noise = audioCtx.createBufferSource(); noise.buffer=noiseBuf;
-        const noiseGain = audioCtx.createGain(); noiseGain.gain.setValueAtTime(0.04,t); noiseGain.gain.linearRampToValueAtTime(0,t+0.06); noise.connect(noiseGain);
-        const masterGain = audioCtx.createGain(); masterGain.gain.setValueAtTime(0,t); masterGain.gain.linearRampToValueAtTime(0.22,t+0.05); masterGain.gain.setValueAtTime(0.22,t+0.3); masterGain.gain.linearRampToValueAtTime(0,t+dur);
-        const f1g=audioCtx.createGain(); f1g.gain.value=0.6;
-        const f2g=audioCtx.createGain(); f2g.gain.value=0.5;
-        osc.connect(f1); f1.connect(f1g); f1g.connect(masterGain);
-        osc.connect(f2); f2.connect(f2g); f2g.connect(masterGain);
-        noiseGain.connect(masterGain); masterGain.connect(audioCtx.destination);
-        lfo.start(t); osc.start(t); noise.start(t);
-        lfo.stop(t+dur+0.1); osc.stop(t+dur+0.1);
+        if (!meowUnlocked) return;
+        const m = meowAudio.cloneNode();
+        m.volume = 0.55 + Math.random() * 0.3;
+        m.playbackRate = 0.88 + Math.random() * 0.24;
+        m.play().catch(() => {});
       }
 
       // Voxel kotek positions (4 roaming cats, all use kotek.glb)
