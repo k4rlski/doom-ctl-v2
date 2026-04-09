@@ -586,19 +586,23 @@ const DOOM2 = (() => {
             result.animationGroups[0].start(true);
           }
 
-          remotes[msg.id].node = root;
+          // Wrap in pivot so rotation isn't overridden by animations
+          const pivot = new BABYLON.TransformNode('pivot_' + msg.id, scene_ref);
+          root.parent = pivot;
+          pivot._remoteFloorOffset = root._remoteFloorOffset;
+
+          remotes[msg.id].node = pivot;
           remotes[msg.id]._animGroups = result.animationGroups;
 
-          // Place at last known position immediately (don't wait for next WS tick)
           const lm = remotes[msg.id]._lastMsg;
           if (lm) {
             const fo2 = (lm.fo !== undefined) ? lm.fo : 1.8;
-            root.position.set(lm.x || 0, (lm.y || 1.8) - fo2 - (root._remoteFloorOffset || 0), lm.z || 0);
-            if (lm.angle !== undefined) root.rotation.y = lm.angle + (window._faceOffset || 0);
+            pivot.position.set(lm.x || 0, (lm.y || 1.8) - fo2 - (pivot._remoteFloorOffset || 0), lm.z || 0);
+            if (lm.angle !== undefined) pivot.rotation.y = lm.angle + (window._faceOffset || 0);
           }
 
           console.log('[doom2] Remote loaded:', msg.id, 'as', remoteChar,
-            result.meshes.length, 'meshes, pos:', root.position.toString());
+            result.meshes.length, 'meshes, pos:', pivot.position.toString());
         }).catch(e => {
           console.warn('[doom2] Failed to load remote', msg.id, ':', e.message);
           if (remotes[msg.id] && remotes[msg.id]._loadId === loadId) {
