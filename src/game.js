@@ -1619,12 +1619,15 @@ const DOOM2 = (() => {
     function spawnRoamingCats(scene) {
       // Preload real cat meow MP3
       const meowAudio = new Audio('sprites/meow.mp3');
+      const meowAudio2 = new Audio('sprites/meow2.mp3');
+      meowAudio2.preload = 'auto';
       meowAudio.preload = 'auto';
       let meowUnlocked = false;
       const unlockMeow = () => {
         if (meowUnlocked) return;
         meowUnlocked = true;
         meowAudio.play().then(() => meowAudio.pause()).catch(() => {});
+        meowAudio2.play().then(() => meowAudio2.pause()).catch(() => {});
         document.removeEventListener('click', unlockMeow);
         document.removeEventListener('keydown', unlockMeow);
         document.removeEventListener('touchstart', unlockMeow);
@@ -1635,7 +1638,8 @@ const DOOM2 = (() => {
 
       function playMeow() {
         if (!meowUnlocked) return;
-        const m = meowAudio.cloneNode();
+        const src2 = Math.random() < 0.5 ? meowAudio : meowAudio2;
+        const m = src2.cloneNode();
         m.volume = 0.55 + Math.random() * 0.3;
         m.playbackRate = 0.88 + Math.random() * 0.24;
         m.play().catch(() => {});
