@@ -1221,18 +1221,76 @@ const DOOM2 = (() => {
 
       function playMeow() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.type = 'sine';
         const t = audioCtx.currentTime;
-        // Meow: rise then fall pitch
-        osc.frequency.setValueAtTime(600, t);
-        osc.frequency.linearRampToValueAtTime(900, t + 0.15);
-        osc.frequency.linearRampToValueAtTime(550, t + 0.45);
-        gain.gain.setValueAtTime(0.18, t);
-        gain.gain.linearRampToValueAtTime(0, t + 0.5);
-        osc.start(t); osc.stop(t + 0.5);
+        const dur = 0.65;
+
+        // ── Source: sawtooth (richer harmonics than sine) ──────────────────
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+
+        // ── Vibrato LFO ────────────────────────────────────────────────────
+        const lfo = audioCtx.createOscillator();
+        const lfoGain = audioCtx.createGain();
+        lfo.frequency.value = 5.5;           // vibrato rate
+        lfoGain.gain.value = 18;             // vibrato depth (Hz)
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+
+        // ── Fundamental pitch contour (mEow shape) ────────────────────────
+        // Start mid, rise fast on "m→ee", fall on "→ow"
+        osc.frequency.setValueAtTime(380, t);
+        osc.frequency.linearRampToValueAtTime(420, t + 0.04);  // 'm' onset
+        osc.frequency.linearRampToValueAtTime(780, t + 0.18);  // 'ee' peak
+        osc.frequency.linearRampToValueAtTime(820, t + 0.25);  // hold
+        osc.frequency.linearRampToValueAtTime(520, t + 0.45);  // 'ow' fall
+        osc.frequency.linearRampToValueAtTime(340, t + dur);   // tail
+
+        // ── Formant 1: throat resonance (low, ~500Hz) ─────────────────────
+        const f1 = audioCtx.createBiquadFilter();
+        f1.type = 'bandpass';
+        f1.frequency.setValueAtTime(480, t);
+        f1.frequency.linearRampToValueAtTime(720, t + 0.2);
+        f1.frequency.linearRampToValueAtTime(500, t + dur);
+        f1.Q.value = 4;
+
+        // ── Formant 2: mouth resonance (high, ~1200-2000Hz) ───────────────
+        const f2 = audioCtx.createBiquadFilter();
+        f2.type = 'bandpass';
+        f2.frequency.setValueAtTime(1200, t);
+        f2.frequency.linearRampToValueAtTime(2200, t + 0.18); // vowel shift
+        f2.frequency.linearRampToValueAtTime(1100, t + dur);
+        f2.Q.value = 6;
+
+        // ── Noise burst at start (breath/consonant 'm') ───────────────────
+        const bufLen = audioCtx.sampleRate * 0.06;
+        const noiseBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+        const nd = noiseBuf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) nd[i] = (Math.random()*2-1);
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuf;
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.04, t);
+        noiseGain.gain.linearRampToValueAtTime(0, t + 0.06);
+        noise.connect(noiseGain);
+
+        // ── Master gain envelope ──────────────────────────────────────────
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(0, t);
+        masterGain.gain.linearRampToValueAtTime(0.22, t + 0.05); // attack
+        masterGain.gain.setValueAtTime(0.22, t + 0.3);           // sustain
+        masterGain.gain.linearRampToValueAtTime(0, t + dur);     // release
+
+        // ── Signal chain: osc → f1+f2 mixed → master → output ────────────
+        const f1Gain = audioCtx.createGain(); f1Gain.gain.value = 0.6;
+        const f2Gain = audioCtx.createGain(); f2Gain.gain.value = 0.5;
+        osc.connect(f1); f1.connect(f1Gain); f1Gain.connect(masterGain);
+        osc.connect(f2); f2.connect(f2Gain); f2Gain.connect(masterGain);
+        noiseGain.connect(masterGain);
+        masterGain.connect(audioCtx.destination);
+
+        lfo.start(t); osc.start(t); noise.start(t);
+        lfo.stop(t + dur + 0.1);
+        osc.stop(t + dur + 0.1);
       }
 
       const catStartPositions = [
