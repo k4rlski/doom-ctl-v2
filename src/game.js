@@ -502,43 +502,52 @@ const DOOM2 = (() => {
   }
 
   function handleRemotePlayer(msg) {
-    if (!scene_ref || !silieRoot) return;
+    if (!scene_ref) return;
 
     if (!remotes[msg.id]) {
       const remoteChar = msg.char || 'silie';
-      if (remoteChar === 'meow') {
-        const mc = buildMeowCat(scene_ref, 'remote_' + msg.id);
-        mc._baseY = 0;
-        remotes[msg.id] = { node: mc, lastSeen: Date.now() };
-        console.log('[doom2] Remote Meow joined:', msg.id);
-      } else {
-      const template   = (remoteChar === chosenCharacter)
-        ? silieRoot
-        : (window._otherCharRoot || silieRoot);
+      let node = null;
 
-      // instantiateHierarchy preserves full parent/child FBX structure
-      const cloneRoot = template.instantiateHierarchy(null, { doNotInstantiate: true });
-      if (!cloneRoot) {
-        // fallback: manual mesh clone
-        const fb = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
-        template.getChildMeshes(false).forEach(m => {
-          const c = m.clone('r_' + msg.id + '_' + m.name, fb);
-          if (c) c.isVisible = true;
-        });
-        remotes[msg.id] = { node: fb, lastSeen: Date.now() };
+      if (remoteChar === 'meow') {
+        node = buildMeowCat(scene_ref, 'remote_' + msg.id);
+        node._baseY = 0;
       } else {
-        cloneRoot.name = 'remote_' + msg.id;
-        cloneRoot.getChildMeshes(false).forEach(m => { m.isVisible = true; });
-        remotes[msg.id] = { node: cloneRoot, lastSeen: Date.now() };
+        const template = silieRoot || window._otherCharRoot;
+        if (!template) return; // template not loaded yet
+
+        // Try instantiateHierarchy (GLB meshes)
+        let cloned = null;
+        if (template.instantiateHierarchy) {
+          try {
+            cloned = template.instantiateHierarchy(null, { doNotInstantiate: true });
+          } catch(e) {}
+        }
+
+        if (cloned) {
+          cloned.name = 'remote_' + msg.id;
+          cloned.getChildMeshes(false).forEach(m => { m.isVisible = true; m.setEnabled(true); });
+          if (template.scaling) cloned.scaling = template.scaling.clone();
+          node = cloned;
+        } else {
+          // Fallback: manual clone of all child meshes
+          const root = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
+          if (template.scaling) root.scaling = template.scaling.clone();
+          template.getChildMeshes(false).forEach(m => {
+            const c = m.clone('r_' + msg.id + '_' + m.name, root);
+            if (c) { c.isVisible = true; c.setEnabled(true); }
+          });
+          node = root;
+        }
       }
+
+      remotes[msg.id] = { node, lastSeen: Date.now() };
       console.log('[doom2] Remote joined:', msg.id, 'as', remoteChar);
-      } // end non-meow remote
     }
 
-    // Use the sender's floor offset if provided, otherwise assume eye height
     const r = remotes[msg.id];
+    if (!r) return;
     const eyeH = 1.8;
-    const fo   = (msg.fo !== undefined) ? msg.fo : eyeH;
+    const fo = (msg.fo !== undefined) ? msg.fo : eyeH;
     r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo, msg.z || 0);
     r.lastSeen = Date.now();
   }
