@@ -1283,10 +1283,7 @@ const DOOM2 = (() => {
       // Ceiling — warm cream with exposed beams
       const cafeCeil = BABYLON.MeshBuilder.CreateGround('cafeCeil',{width:CW,height:CD},scene);
       cafeCeil.position.set(CX, 4.5, CZ); cafeCeil.rotation.x=Math.PI; cafeCeil.material=creamMat;
-      // Ceiling beams
-      for (let bx=-10;bx<=10;bx+=10) {
-        box('beam'+bx, 0.3, 0.3, CD, CX+bx, 4.35, CZ, darkWoodMat);
-      }
+      // ceiling beams removed
 
       // Walls
       box('cafeW_N', CW, 4.5, 0.3, CX, 2.25, CZ-CD/2, wallCafeMat);
