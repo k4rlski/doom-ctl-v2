@@ -591,6 +591,9 @@ const DOOM2 = (() => {
       const f = BABYLON.MeshBuilder.CreateGround(name, { width: w, height: d }, scene);
       f.position.set(x, 0, z);
       f.material = floorMat;
+      f._structural = true;
+      f.checkCollisions = true;
+      return f;
     }
 
     function ceil(name, w, d, x, z, y = 4) {
@@ -598,6 +601,8 @@ const DOOM2 = (() => {
       c.position.set(x, y, z);
       c.rotation.x = Math.PI;
       c.material = ceilMat;
+      c._structural = true;
+      return c;
     }
 
     // ── Room A: Main Hub (centre) ─────────────────────────────────────────
@@ -937,7 +942,7 @@ const DOOM2 = (() => {
     camera.ellipsoid    = new BABYLON.Vector3(0.4, 0.9, 0.4);
     camera.checkCollisions = true;
     scene.gravity       = new BABYLON.Vector3(0, -0.98, 0);
-    camera.applyGravity = true;  // on by default
+    camera.applyGravity = false; // enabled after onReady
     camera.keysUp    = [87, 38];
     camera.keysDown  = [83, 40];
     camera.keysLeft  = [65, 37];
@@ -960,7 +965,7 @@ const DOOM2 = (() => {
     setProgress(40, 'Building level...');
     buildLevel(scene);
 
-    // collision handled in post-build onReadyObservable below
+    // collisions set in onReadyObservable
 
     setProgress(60, 'Loading Silie...');
 
@@ -1226,383 +1231,45 @@ const DOOM2 = (() => {
 
     // ════════════════════════════════════════════════════════════════════════
     // CAT CAFÉ — replaces Room C south chamber with full café + outdoor patio
-    // ════════════════════════════════════════════════════════════════════════
-    function buildCatCafe(scene) {
-
-      // ── Materials ──────────────────────────────────────────────────────────
-      const mk = (n, diff, emis) => {
-        const m = new BABYLON.StandardMaterial(n, scene);
-        m.diffuseColor = new BABYLON.Color3(...diff);
-        if (emis) m.emissiveColor = new BABYLON.Color3(...emis);
-        return m;
-      };
-      const woodMat    = mk('cafeWood',   [0.55, 0.30, 0.12]);
-      const darkWoodMat= mk('cafeDkWood', [0.28, 0.13, 0.05]);
-      const creamMat   = mk('cafeCream',  [0.97, 0.94, 0.87]);
-      const tileMat    = mk('cafeTile',   [0.92, 0.88, 0.82]);
-      const glassMat   = mk('cafeGlass',  [0.75, 0.92, 0.95], [0.05, 0.1, 0.12]);
-      glassMat.alpha   = 0.35;
-      const neonPinkMat= mk('cafeNeonPink',[0.6,0.0,0.3],[1.0,0.08,0.55]);
-      const neonYellMat= mk('cafeNeonYell',[0.6,0.55,0],[1.0,0.95,0.1]);
-      const wallCafeMat= mk('cafeWall',   [0.95, 0.88, 0.80]);
-      const skyMat     = mk('cafeSky',    [0.42, 0.72, 0.95],[0.12,0.35,0.7]);
-      const grassMat   = mk('cafeGrass',  [0.25, 0.62, 0.20],[0.02,0.06,0.01]);
-      const brickMat   = mk('cafeBrick',  [0.72, 0.38, 0.24]);
-      const cushionMat = mk('cafeCushion',[0.85, 0.30, 0.40],[0.05,0,0.02]);
-      const cakeRedMat = mk('cakeRed',    [0.90, 0.12, 0.18],[0.12,0,0.01]);
-      const cakeBluMat = mk('cakeBlu',    [0.20, 0.42, 0.90],[0,0.02,0.1]);
-      const icingMat   = mk('icing',      [0.99, 0.96, 0.93]);
-      const chocMat    = mk('choc',       [0.28, 0.14, 0.04]);
-      const berryMat   = mk('berry',      [0.80, 0.10, 0.25],[0.08,0,0.01]);
-      const lemonMat   = mk('lemon',      [0.98, 0.90, 0.15],[0.08,0.06,0]);
-      const greenPlantMat = mk('plant',   [0.15, 0.65, 0.22],[0.01,0.06,0.01]);
-      const potMatC    = mk('potC',       [0.52, 0.28, 0.15]);
-      const marbleMat  = mk('marble',     [0.96, 0.94, 0.90]);
-
-      const attach = (mesh, mat) => { if (mat) mesh.material = mat; return mesh; };
-      const box  = (n,w,h,d,x,y,z,mat) => { const b=BABYLON.MeshBuilder.CreateBox(n,{width:w,height:h,depth:d},scene); b.position.set(x,y,z); return attach(b,mat); };
-      const cyl  = (n,h,dt,db,t,x,y,z,mat) => { const c=BABYLON.MeshBuilder.CreateCylinder(n,{height:h,diameterTop:dt,diameterBottom:db,tessellation:t||12},scene); c.position.set(x,y,z); return attach(c,mat); };
-      const sph  = (n,d,x,y,z,mat) => { const s=BABYLON.MeshBuilder.CreateSphere(n,{diameter:d,segments:8},scene); s.position.set(x,y,z); return attach(s,mat); };
-
-      // ── Café room: larger than standard rooms ──────────────────────────────
-      const CX=0, CZ=-50; // centre of café
-      const CW=28, CD=28; // width/depth
-
-      // Floor — warm tile
-      const cafeFloor = BABYLON.MeshBuilder.CreateGround('cafeFloor',{width:CW,height:CD},scene);
-      cafeFloor.position.set(CX, 0.005, CZ); cafeFloor.material = tileMat;
-
-      // Ceiling — warm cream with exposed beams
-      const cafeCeil = BABYLON.MeshBuilder.CreateGround('cafeCeil',{width:CW,height:CD},scene);
-      cafeCeil.position.set(CX, 4.5, CZ); cafeCeil.rotation.x=Math.PI; cafeCeil.material=creamMat;
-      // ceiling beams removed
-
-      // Walls
-      box('cafeW_N', CW, 4.5, 0.3, CX, 2.25, CZ-CD/2, wallCafeMat);
-
-
-      // South wall has opening to outdoor patio (leave 8-unit gap)
-  
-  
-  
-
-      // Connection to hub — north wall with corridor gap
-  
-  
-  
-
-      // ── CAT CAFE neon sign ──────────────────────────────────────────────────
-      const signTex = new BABYLON.DynamicTexture('catcafeSign',{width:1024,height:256},scene,true);
-      const sCtx = signTex.getContext();
-      sCtx.fillStyle='#0a0005'; sCtx.fillRect(0,0,1024,256);
-      // Glow layers
-      for (let g=0;g<5;g++) {
-        sCtx.shadowColor='#ff00aa'; sCtx.shadowBlur=20+g*8;
-        sCtx.fillStyle='#ff00aa';
-        sCtx.font='bold 88px Arial'; sCtx.textAlign='center';
-        sCtx.fillText('🐱 CAT CAFE 🐱', 512, 100);
-        sCtx.font='bold 40px Arial';
-        sCtx.fillStyle='#ffcc00';
-        sCtx.shadowColor='#ffcc00';
-        sCtx.fillText('☕  Fresh Baked Daily  ☕', 512, 168);
-      }
-      // Bright core
-      sCtx.shadowBlur=0;
-      sCtx.fillStyle='#ffffff'; sCtx.font='bold 88px Arial';
-      sCtx.fillText('🐱 CAT CAFE 🐱', 512, 100);
-      sCtx.fillStyle='#ffe066'; sCtx.font='bold 40px Arial';
-      sCtx.fillText('☕  Fresh Baked Daily  ☕', 512, 168);
-      signTex.update();
-      const signMat2 = new BABYLON.StandardMaterial('ccSignMat',scene);
-      signMat2.diffuseTexture=signTex; signMat2.emissiveTexture=signTex;
-      signMat2.emissiveColor=new BABYLON.Color3(1,1,1); signMat2.backFaceCulling=false;
-      const signPlane=BABYLON.MeshBuilder.CreatePlane('ccSign',{width:9,height:2.2},scene);
-      signPlane.position.set(CX, 2.6, CZ-CD/2+0.4);
-      signPlane.rotation.y = Math.PI;
-      signPlane.material=signMat2;
-      // Pink glow light under sign
-      const signLight=new BABYLON.PointLight('ccSignLight',new BABYLON.Vector3(CX,2.3,CZ-CD/2+1),scene);
-      signLight.diffuse=new BABYLON.Color3(1,0.1,0.6); signLight.intensity=1.2; signLight.range=10;
-
-      // ── Bakery display counter ──────────────────────────────────────────────
-      const BX=CX, BZ=CZ-CD/2+2.0; // against north wall
-
-      // Counter base
-      box('bakBase', 12, 1.1, 1.2, BX, 0.55, BZ, darkWoodMat);
-      // Marble countertop
-      box('bakTop', 12.2, 0.08, 1.4, BX, 1.14, BZ, marbleMat);
-      // Glass display case (front)
-      box('bakGlass', 10, 0.85, 0.06, BX, 0.68, BZ+0.63, glassMat);
-      box('bakGlassSide1', 0.06, 0.85, 1.2, BX-5, 0.68, BZ, glassMat);
-      box('bakGlassSide2', 0.06, 0.85, 1.2, BX+5, 0.68, BZ, glassMat);
-      // Display shelves inside case
-      box('bakShelf1', 9.8, 0.04, 1.1, BX, 0.55, BZ-0.1, woodMat);
-      box('bakShelf2', 9.8, 0.04, 1.1, BX, 0.85, BZ-0.1, woodMat);
-
-      // ── SNACKS in the display ───────────────────────────────────────────────
-      // Row 1 (bottom shelf): croissants, muffins
-      for (let i=0;i<5;i++) {
-        const cx2=BX-4.5+i*2.2;
-        // Croissant body (torus)
-        const cr=BABYLON.MeshBuilder.CreateTorus('croissant'+i,{diameter:0.22,thickness:0.1,tessellation:10},scene);
-        cr.position.set(cx2, 0.62, BZ-0.08); cr.rotation.x=Math.PI/2; cr.rotation.z=0.3;
-        cr.material=mk('crMat'+i,[0.82,0.58,0.18]);
-        // Muffin next to it
-        const mufBase=cyl('mufBase'+i,0.18,0.26,0.28,12,cx2+0.9,0.62,BZ-0.08,cakeBluMat);
-        const mufTop=sph('mufTop'+i,0.28,cx2+0.9,0.80,BZ-0.08,mk('mufTopMat'+i,[0.35,0.20,0.55]));
-      }
-      // Row 2 (top shelf): cakes, donuts
-      // Big 3-layer cake left side
-      cyl('cake1bot',0.18,0.7,0.7,16,BX-3.5,0.92,BZ-0.08,cakeRedMat);
-      cyl('cake1mid',0.18,0.55,0.55,16,BX-3.5,1.10,BZ-0.08,icingMat);
-      cyl('cake1top',0.18,0.40,0.40,16,BX-3.5,1.28,BZ-0.08,cakeRedMat);
-      sph('cake1cher',0.1,BX-3.5,1.40,BZ-0.08,berryMat);
-      // Chocolate cake right
-      cyl('cake2bot',0.22,0.65,0.65,16,BX+3.5,0.92,BZ-0.08,chocMat);
-      cyl('cake2top',0.22,0.50,0.50,16,BX+3.5,1.14,BZ-0.08,icingMat);
-      sph('cake2cher',0.1,BX+3.5,1.28,BZ-0.08,berryMat);
-      // Donuts in middle
-      for (let d=0;d<3;d++) {
-        const dx=BX-1.2+d*1.2;
-        const dn=BABYLON.MeshBuilder.CreateTorus('donut'+d,{diameter:0.24,thickness:0.1,tessellation:14},scene);
-        dn.position.set(dx,0.95,BZ-0.08); dn.rotation.x=Math.PI/2;
-        dn.material=mk('dnMat'+d,d===0?[0.95,0.6,0.1]:d===1?[0.8,0.15,0.35]:[0.2,0.5,0.9],null);
-        // Sprinkles
-        for (let s=0;s<5;s++) {
-          const sp=box('spr'+d+'_'+s,0.04,0.02,0.04,dx+(Math.random()-0.5)*0.2,1.01,(BZ-0.08)+(Math.random()-0.5)*0.1,mk('sprM'+d+s,[Math.random(),Math.random(),Math.random()]));
-        }
-      }
-      // Lemon tart far right
-      cyl('tart1',0.06,0.32,0.35,12,BX+4.5,0.95,BZ-0.08,mk('tartCrust',[0.85,0.65,0.22]));
-      cyl('tartFill',0.04,0.28,0.30,12,BX+4.5,1.00,BZ-0.08,lemonMat);
-
-      // ── Coffee machine on counter ───────────────────────────────────────────
-      box('cofMachine',0.5,0.7,0.35,BX-5.2,1.5,BZ-0.1,mk('cofMach',[0.2,0.2,0.22],[0.02,0.02,0.03]));
-      cyl('cofGroup',0.15,0.12,0.12,8,BX-5.2,1.85,BZ,mk('cofGrp',[0.18,0.15,0.12]));
-      // Steam wisps (thin cylinders)
-      for(let s=0;s<3;s++){
-        const sw=cyl('steam'+s,0.25,0.03,0.05,6,BX-5.1+s*0.08,2.05+s*0.1,BZ,mk('stm'+s,[0.95,0.95,0.98],[0.3,0.3,0.35]));
-        sw.material.alpha=0.4;
-      }
-
-      // ── Coffee cups on counter ──────────────────────────────────────────────
-      [-4, -2, 0, 2, 4].forEach((ox,ci) => {
-        cyl('cup'+ci, 0.14, 0.14, 0.11, 10, BX+ox, 1.22, BZ-0.2, mk('cupM'+ci,[0.97,0.94,0.88]));
-        cyl('coffee'+ci, 0.04, 0.11, 0.11, 10, BX+ox, 1.30, BZ-0.2, mk('coffeeM'+ci,[0.22,0.12,0.06]));
-        // Saucer
-        cyl('saucer'+ci, 0.025, 0.2, 0.2, 12, BX+ox, 1.16, BZ-0.2, creamMat);
-      });
-
-      // ── Café tables ─────────────────────────────────────────────────────────
-      const tablePositions = [
-        [-9,CZ+4], [-9,CZ-4], [-9,CZ-12],
-        [0, CZ+4], [0, CZ-4], [0, CZ-12],
-        [9, CZ+4], [9, CZ-4], [9, CZ-12],
-      ];
-      tablePositions.forEach(([tx,tz],ti) => {
-        // Table top
-        cyl('tabTop'+ti, 0.07, 1.0, 1.0, 16, tx, 0.83, tz, marbleMat);
-        // Table leg
-        cyl('tabLeg'+ti, 0.8, 0.06, 0.06, 8, tx, 0.4, tz, darkWoodMat);
-        // Base
-        cyl('tabBase'+ti, 0.04, 0.5, 0.5, 8, tx, 0.02, tz, darkWoodMat);
-        // Coffee cup on table
-        cyl('tCup'+ti, 0.1, 0.09, 0.07, 10, tx+0.2, 0.9, tz+0.1, creamMat);
-        cyl('tCoffee'+ti, 0.03, 0.07, 0.07, 10, tx+0.2, 0.95, tz+0.1, chocMat);
-        // 2 chairs per table
-        [-1,1].forEach((side,si) => {
-          const cx3 = tx + side*0.82;
-          // Seat
-          box('seat'+ti+'_'+si, 0.55, 0.06, 0.5, cx3, 0.52, tz, woodMat);
-          // Back
-          box('back'+ti+'_'+si, 0.55, 0.52, 0.06, cx3, 0.8, tz+side*0.22, woodMat);
-          // 4 legs
-          [[-0.22,-0.2],[0.22,-0.2],[-0.22,0.2],[0.22,0.2]].forEach(([lx,lz2],li)=>{
-            cyl('cleg'+ti+'_'+si+'_'+li, 0.52, 0.04, 0.04, 6, cx3+lx, 0.26, tz+lz2, darkWoodMat);
-          });
-          // Cushion on seat
-          box('cushion'+ti+'_'+si, 0.50, 0.04, 0.45, cx3, 0.56, tz, cushionMat);
-        });
-      });
-
-      // ── Plants / window boxes ───────────────────────────────────────────────
-      [[-12, CZ+8],[12, CZ+8],[-12, CZ-8],[12, CZ-8]].forEach(([px,pz],pi)=>{
-        cyl('plantPot'+pi, 0.45, 0.34, 0.28, 12, px, 0.23, pz, potMatC);
-        // Leafy top
-        for(let l=0;l<6;l++){
-          const ang=l/6*Math.PI*2;
-          sph('leaf'+pi+'_'+l, 0.25+Math.random()*0.1, px+Math.cos(ang)*0.15, 0.6+Math.random()*0.12, pz+Math.sin(ang)*0.15, greenPlantMat);
-        }
-      });
-
-      // ── Chalk menu board on east wall ───────────────────────────────────────
-      const menuTex = new BABYLON.DynamicTexture('menuTex',{width:512,height:512},scene,true);
-      const mCtx = menuTex.getContext();
-      mCtx.fillStyle='#1a1a2e'; mCtx.fillRect(0,0,512,512);
-      mCtx.fillStyle='#e8dcc8';
-      mCtx.font='bold 32px Arial'; mCtx.textAlign='center';
-      mCtx.fillText('MENU', 256, 50);
-      mCtx.fillStyle='#c8c8c8'; mCtx.font='22px Arial';
-      const items=['☕ Espresso ... $3','☕ Latte ... $4.5','🍰 Cake Slice ... $5',
-        '🥐 Croissant ... $3.5','🍩 Donut ... $2.5','🧁 Muffin ... $3',
-        '🍋 Lemon Tart ... $4','🍵 Cat Matcha ... $5'];
-      items.forEach((item,i)=>mCtx.fillText(item, 256, 100+i*48));
-      menuTex.update();
-      const menuMat2=new BABYLON.StandardMaterial('menuMat',scene);
-      menuMat2.diffuseTexture=menuTex; menuMat2.emissiveTexture=menuTex;
-      menuMat2.emissiveColor=new BABYLON.Color3(0.7,0.7,0.7); menuMat2.backFaceCulling=false;
-      const menuBoard=BABYLON.MeshBuilder.CreatePlane('menuBoard',{width:2.8,height:2.8},scene);
-      menuBoard.position.set(CX+CW/2-0.18, 2.5, CZ-4);
-      menuBoard.rotation.y=Math.PI/2;
-      menuBoard.scaling.set(0.65,0.65,0.65);
-      menuBoard.material=menuMat2;
-
-      // ── String lights across ceiling ────────────────────────────────────────
-      // String light bulbs (visual only — fewer actual lights for perf)
-      for(let lx=-11;lx<=11;lx+=2.2){
-        sph('bulb'+lx, 0.12, CX+lx, 4.2, CZ, mk('bulbM'+lx,[1,0.92,0.5],[1,0.85,0.2]));
-      }
-      // 3 actual point lights spread across ceiling (not one per bulb)
-      [-8,0,8].forEach((lx,li)=>{
-        const bl=new BABYLON.PointLight('cLight'+li,new BABYLON.Vector3(CX+lx,4.0,CZ),scene);
-        bl.diffuse=new BABYLON.Color3(1,0.88,0.4); bl.intensity=0.8; bl.range=12;
-      });
-
-      // ═══════════════════════════════════════════════════════════════════════
-      // OUTDOOR PATIO beyond south wall
-      // ═══════════════════════════════════════════════════════════════════════
-      const OZ = CZ+CD/2+12; // patio centre
-
-      // ── Sky dome ─────────────────────────────────────────────────────────────
-      const sky = BABYLON.MeshBuilder.CreateSphere('skyDome',{diameter:110,segments:6},scene);
-      sky.position.set(CX, -5, OZ);
-      const skyMatFull = new BABYLON.StandardMaterial('skyFull',scene);
-      skyMatFull.diffuseColor  = new BABYLON.Color3(0.42,0.72,0.95);
-      skyMatFull.emissiveColor = new BABYLON.Color3(0.12,0.35,0.72);
-      skyMatFull.backFaceCulling = false;
-      skyMatFull.sideOrientation = BABYLON.Mesh.BACKSIDE;
-      skyMatFull.disableLighting = true; // sky ignores scene lights
-      sky.material = skyMatFull;
-      sky.isPickable = false;
-
-      // Sun
-      const sun=sph('sun',3.5, CX+30,35,OZ-20, mk('sunMat',[1,0.97,0.5],[1,0.95,0.2]));
-      const sunLight=new BABYLON.PointLight('sunLight',new BABYLON.Vector3(CX+30,35,OZ-20),scene);
-      sunLight.diffuse=new BABYLON.Color3(1,0.95,0.7); sunLight.intensity=1.5; sunLight.range=200;
-
-      // Clouds (groups of spheres)
-      // Simplified clouds (2 spheres each instead of 4)
-      [[CX-15,22,OZ-15],[CX+18,24,OZ-10],[CX-3,27,OZ-22]].forEach(([cx2,cy,cz2],ci)=>{
-        [[0,0,0],[0.8,0.15,0.3]].forEach(([dx,dy,dz],di)=>{
-          const cs=sph('cloud'+ci+'_'+di,2.8,cx2+dx*2.5,cy+dy*1.5,cz2+dz*2,mk('cloudM'+ci+di,[0.97,0.97,0.99],[0.35,0.38,0.42]));
-          cs.isPickable=false;
-        });
-      });
-
-      // Patio floor (stone)
-      const stoneMat=mk('stone',[0.75,0.72,0.68]);
-      const patioFloor=BABYLON.MeshBuilder.CreateGround('patio',{width:CW,height:24},scene);
-      patioFloor.position.set(CX,0.005,OZ); patioFloor.material=stoneMat;
-
-      // Grass beyond patio
-      const grassField=BABYLON.MeshBuilder.CreateGround('grass',{width:60,height:30},scene);
-      grassField.position.set(CX,0.006,OZ+20); grassField.material=grassMat;
-
-      // Patio low walls
-      box('patioW_E',0.3,0.9,24,CX+CW/2,0.45,OZ,brickMat);
-      box('patioW_W',0.3,0.9,24,CX-CW/2,0.45,OZ,brickMat);
-      box('patioW_S',CW,0.9,0.3,CX,0.45,OZ+12,brickMat);
-
-      // Patio tables (outdoor, round with umbrella)
-      [[-8,OZ+4],[0,OZ+4],[8,OZ+4],[-8,OZ-4],[8,OZ-4]].forEach(([px,pz2],oi)=>{
-        // Table
-        cyl('pTab'+oi,0.06,0.9,0.9,16,px,0.78,pz2,stoneMat);
-        cyl('pTabLeg'+oi,0.76,0.05,0.05,8,px,0.38,pz2,mk('pLeg'+oi,[0.6,0.6,0.62]));
-        // Umbrella pole
-        cyl('umbPole'+oi,1.8,0.04,0.04,6,px,1.6,pz2,mk('ump'+oi,[0.5,0.5,0.52]));
-        // Umbrella canopy
-        cyl('umbTop'+oi,0.12,1.4,0.0,16,px,2.5,pz2,mk('umbt'+oi,oi%2===0?[0.95,0.25,0.3]:[0.2,0.5,0.9],null));
-        // 2 patio chairs
-        [-1,1].forEach((side2,psi)=>{
-          box('pSeat'+oi+'_'+psi,0.45,0.05,0.4,px+side2*0.72,0.48,pz2,stoneMat);
-          box('pBack'+oi+'_'+psi,0.45,0.4,0.05,px+side2*0.72,0.7,pz2+side2*0.19,stoneMat);
-        });
-      });
-
-      // Flower planters along patio walls
-      [-10,-5,0,5,10].forEach((ox,fi)=>{
-        cyl('flPot'+fi,0.4,0.35,0.28,10,CX+ox,0.2,OZ+11.5,mk('flPotM'+fi,[0.6,0.3,0.15]));
-        // Flowers
-        for(let f=0;f<5;f++){
-          const ang2=f/5*Math.PI*2;
-          sph('flower'+fi+'_'+f,0.22,CX+ox+Math.cos(ang2)*0.18,0.55,OZ+11.5+Math.sin(ang2)*0.18,
-            mk('flM'+fi+f,[[1,0.2,0.4],[1,0.8,0.1],[0.3,0.6,1],[0.8,0.2,0.8],[1,0.5,0]][f%5]));
-        }
-      });
-
-      // Trees
-      [[CX-12,OZ+8],[CX+12,OZ+8],[CX-12,OZ-2],[CX+12,OZ-2]].forEach(([tx2,tz2],ti2)=>{
-        // Trunk
-        cyl('trunk'+ti2,2.5,0.2,0.28,8,tx2,1.25,tz2,mk('trunkM'+ti2,[0.38,0.22,0.08]));
-        // Canopy (layered spheres)
-        [[0,2.8,0],[0.4,2.4,0.3],[-0.3,2.5,-0.4],[0,3.2,0]].forEach(([dx,dy,dz],li2)=>{
-          sph('leaves'+ti2+'_'+li2,1.2+Math.random()*0.3,tx2+dx,dy+tz2*0,tz2+dz,greenPlantMat);
-        });
-      });
-
-      // String lights on patio (zigzag across posts)
-      // Patio string lights (visual bulbs, 2 real lights)
-      for(let lx2=-11;lx2<=11;lx2+=2.5){
-        const zig=(Math.floor((lx2+11)/2.5))%2===0?OZ-3:OZ+3;
-        sph('patBulb'+lx2,0.1,CX+lx2,3.2,zig,mk('patBM'+lx2,[1,0.92,0.5],[1,0.88,0.2]));
-      }
-      [-6,6].forEach((lx2,li2)=>{
-        const pl2=new BABYLON.PointLight('patL'+li2,new BABYLON.Vector3(CX+lx2,3.0,OZ),scene);
-        pl2.diffuse=new BABYLON.Color3(1,0.88,0.4); pl2.intensity=0.6; pl2.range=14;
-      });
-
-      // Ambient fill light for outdoor
-      const outdoorLight=new BABYLON.HemisphericLight('outdoorAmb',new BABYLON.Vector3(0,1,0),scene);
-      outdoorLight.diffuse=new BABYLON.Color3(0.7,0.85,1.0);
-      outdoorLight.groundColor=new BABYLON.Color3(0.3,0.5,0.2);
-      outdoorLight.intensity=0.7;
-
-      console.log('[doom2] Cat Cafe built!');
-    }
-
-    buildCatCafe(scene);
-
-    // ── Scene ready: set collisions then freeze decorations (order matters!) ────
+    // ── Scene ready: enable collisions on _structural meshes, freeze decorations ──
     scene.onReadyObservable.addOnce(() => {
-      // 1. First pass: assign checkCollisions on structural meshes
-      const FLOOR_PFX = ['hub_floor','hub_ceil','corr_','roomA','roomB','roomC','roomD','roomE','roomF',
-                         'cafeFloor','cafeW_','cafeCon','cafeConn','cafCorr','patio','patioW'];
-      scene.meshes.forEach(m => {
-        m.checkCollisions = FLOOR_PFX.some(p => m.name.startsWith(p));
-      });
+      let structCount = 0, decoCount = 0;
+      const DECO_PFX = ['bak','donut','cake','cup','saucer','muf','cro','tart','spr',
+                        'plant','flower','umb','pTab','pSeat','pBack','steam',
+                        'sky','sun','cloud','trunk','leaves','grass',
+                        'chk','mMark','mBar','tring','pawTip','chest','chin',
+                        'bulb','patBulb','toast','ear','eye','pup','blush',
+                        'tail','str','stripe','kp','menuBoard','signPlane',
+                        'cafeFloor','patioFloor'];
+      const PLAYER_PFX = ['npc_cat','remote_','silie_','meow_cat','other_','_root'];
 
-      // 2. Second pass: freeze ONLY decorative meshes (NOT collision meshes)
-      const DECO_PFX = ['bak','tab','seat','back_','cleg','cushion','bulb','beam',
-                        'donut','cake','cup','saucer','muf','cof','cro','tart','spr',
-                        'plant','flower','fl','umb','pTab','pSeat','pBack','steam',
-                        'menu','sign','sky','sun','cloud','grass','trunk','leaves',
-                        'pot','chk','mMark','mBar','tring','pawTip','chest','chin'];
       scene.meshes.forEach(m => {
+        if (PLAYER_PFX.some(p => m.name.startsWith(p))) return;
+
+        if (m._structural) {
+          // Already has checkCollisions=true from creation
+          m.isPickable = false;
+          structCount++;
+          return;
+        }
+
+        // Everything else: no collision, freeze if purely decorative
+        m.checkCollisions = false;
+        m.isPickable = false;
         const isDeco = DECO_PFX.some(p => m.name.startsWith(p));
-        const isPlayer = m.name.startsWith('npc_cat') || m.name.startsWith('remote_') ||
-                         m.name.startsWith('silie') || m.name.startsWith('meow_cat') ||
-                         m.name.startsWith('other_');
-        if (isDeco && !isPlayer) {
-          try { m.freezeWorldMatrix(); m.isPickable = false; } catch(e) {}
+        if (isDeco) {
+          try { m.freezeWorldMatrix(); decoCount++; } catch(e) {}
         }
       });
 
-      // 3. Enable gravity 800ms after scene ready (models + physics settled)
-      camera.applyGravity = true;
-      camera.position.y = 1.82;
-      console.log('[doom2] Gravity enabled');
+      console.log('[doom2] Ready: ' + structCount + ' structural, ' + decoCount + ' frozen deco');
 
-      console.log('[doom2] Scene ready, collisions set, decorations frozen');
+      // One rAF delay: guarantees one full render + collision system init
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        camera.position.y = Math.max(camera.position.y, 1.85);
+        camera.applyGravity = true;
+        console.log('[doom2] Gravity ON at y=' + camera.position.y.toFixed(2));
+      }));
     });
     scene.fogEnd = 75;
 
