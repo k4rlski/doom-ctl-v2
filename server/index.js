@@ -144,7 +144,7 @@ wss.on('connection', (ws, req) => {
         ws._playerId = msg.id; // remember for disconnect cleanup
         console.log('[mp] player update from', msg.id, 'clients:', wss.clients.size);
         ws._playerChar = msg.char || 'silie';
-        broadcastExcept(ws, { type: 'player', id: msg.id, x: msg.x, y: msg.y, z: msg.z, angle: msg.angle, char: msg.char });
+        broadcastExcept(ws, { type: 'player', id: msg.id, x: msg.x, y: msg.y, z: msg.z, angle: msg.angle, char: msg.char, fo: msg.fo });
         break;
 
       default:

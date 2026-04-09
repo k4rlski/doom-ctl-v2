@@ -529,29 +529,37 @@ const DOOM2 = (() => {
         }
         console.log('[doom2] Cloning', remoteChar, 'from', template.name);
 
-        // Try instantiateHierarchy (GLB meshes)
         let cloned = null;
         if (template.instantiateHierarchy) {
           try {
             cloned = template.instantiateHierarchy(null, { doNotInstantiate: true });
-          } catch(e) {}
+          } catch(e) {
+            console.warn('[doom2] instantiateHierarchy failed:', e.message);
+          }
         }
 
         if (cloned) {
           cloned.name = 'remote_' + msg.id;
-          cloned.getChildMeshes(true).forEach(m => { m.isVisible = true; m.setEnabled(true); });
           if (template.scaling) cloned.scaling = template.scaling.clone();
           node = cloned;
         } else {
-          // Fallback: manual clone of all child meshes
           const root = new BABYLON.TransformNode('remote_' + msg.id, scene_ref);
           if (template.scaling) root.scaling = template.scaling.clone();
           template.getChildMeshes(false).forEach(m => {
             const c = m.clone('r_' + msg.id + '_' + m.name, root);
-            if (c) { c.isVisible = true; c.setEnabled(true); c.getChildMeshes(true).forEach(gc=>{gc.isVisible=true;gc.setEnabled(true);}); }
+            if (c) { c.isVisible = true; c.setEnabled(true); }
           });
           node = root;
         }
+
+        // Force ALL descendant meshes visible (recursive — false = full hierarchy)
+        const allMeshes = node.getChildMeshes(false);
+        allMeshes.forEach(m => {
+          m.isVisible = true;
+          m.setEnabled(true);
+          m.visibility = 1;
+        });
+        console.log('[doom2] Clone meshes:', allMeshes.length, allMeshes.map(m => m.name + ':' + m.isVisible));
       }
 
       remotes[msg.id] = { node, lastSeen: Date.now() };
