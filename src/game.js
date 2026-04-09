@@ -621,8 +621,6 @@ const DOOM2 = (() => {
     // ── Corridor North (hub → room B) ───────────────────────────────────
     floor('corr_N_floor', 6, 16, 0, 18);
     ceil ('corr_N_ceil',  6, 16, 0, 18);
-    box('corr_N_W', 0.3, 4, 16, -3, 2, 18, wallMat);
-    box('corr_N_E', 0.3, 4, 16,  3, 2, 18, wallMat);
 
     // ── Room B: North Chamber ────────────────────────────────────────────
     floor('roomB_floor', 18, 18, 0, 36);
@@ -638,8 +636,6 @@ const DOOM2 = (() => {
     // ── Corridor South (hub → room C) ───────────────────────────────────
     floor('corr_S_floor', 6, 16, 0, -18);
     ceil ('corr_S_ceil',  6, 16, 0, -18);
-    box('corr_S_W', 0.3, 4, 16, -3, 2, -18, wallMat);
-    box('corr_S_E', 0.3, 4, 16,  3, 2, -18, wallMat);
 
     // ── Room C: South Chamber ────────────────────────────────────────────
     floor('roomC_floor', 18, 18, 0, -36);
@@ -648,8 +644,6 @@ const DOOM2 = (() => {
 
     floor('cafCorr_floor', 6, 18, 0, -53);
     ceil('cafCorr_ceil',   6, 18, 0, -53);
-    box('cafCorr_W', 0.3, 4, 18, -3, 2, -53, wallMat);
-    box('cafCorr_E', 0.3, 4, 18,  3, 2, -53, wallMat);
 
 
     box('roomC_E', 0.3, 4, 18,  9, 2, -36, wallMat);
@@ -659,8 +653,6 @@ const DOOM2 = (() => {
     // ── Corridor East (hub → room D) ────────────────────────────────────
     floor('corr_E_floor', 16, 6, 18, 0);
     ceil ('corr_E_ceil',  16, 6, 18, 0);
-    box('corr_E_N', 16, 4, 0.3, 18, 2,  3, wallMat);
-    box('corr_E_S', 16, 4, 0.3, 18, 2, -3, wallMat);
 
     // ── Room D: East Chamber ─────────────────────────────────────────────
     floor('roomD_floor', 18, 18, 36, 0);
@@ -676,8 +668,6 @@ const DOOM2 = (() => {
     // ── Room E: West Chamber ───────────────────────────────────────────────
     floor('corr_W_floor', 16, 6, -18, 0);
     ceil ('corr_W_ceil',  16, 6, -18, 0);
-    box('corr_W_N', 16, 4, 0.3, -18, 2,  3, wallMat);
-    box('corr_W_S', 16, 4, 0.3, -18, 2, -3, wallMat);
 
     floor('roomE_floor', 18, 18, -36, 0);
     ceil ('roomE_ceil',  18, 18, -36, 0);
@@ -691,8 +681,6 @@ const DOOM2 = (() => {
     // ── Room F: Southeast (diagonal shortcut feel) ──────────────────────────
     floor('corr_SE_floor', 6, 12, 6, -21);
     ceil ('corr_SE_ceil',  6, 12, 6, -21);
-    box('corr_SE_W', 0.3, 4, 12, 3, 2, -21, wallMat);
-    box('corr_SE_E', 0.3, 4, 12, 9, 2, -21, wallMat);
 
     floor('roomF_floor', 16, 16, 14, -34);
     ceil ('roomF_ceil',  16, 16, 14, -34);
