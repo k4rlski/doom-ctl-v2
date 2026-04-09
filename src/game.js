@@ -940,7 +940,7 @@ const DOOM2 = (() => {
     camera.ellipsoid    = new BABYLON.Vector3(0.4, 0.9, 0.4);
     camera.checkCollisions = true;
     scene.gravity       = new BABYLON.Vector3(0, -0.98, 0);
-    camera.applyGravity = true;
+    camera.applyGravity = false; // enabled after scene loads
     camera.keysUp    = [87, 38];
     camera.keysDown  = [83, 40];
     camera.keysLeft  = [65, 37];
@@ -963,13 +963,7 @@ const DOOM2 = (() => {
     setProgress(40, 'Building level...');
     buildLevel(scene);
 
-    // Collisions only on structural geometry — not crates, pots, signs etc.
-    const COLL_PFX = ['hub_','corr_','room','ceil ','floor','neon','cafeFloor','patio','cafeCon','cafeW_'];
-    scene.onReadyObservable.addOnce(() => {
-      scene.meshes.forEach(m => {
-        m.checkCollisions = COLL_PFX.some(p => m.name.startsWith(p));
-      });
-    });
+    // collision handled in post-build onReadyObservable below
 
     setProgress(60, 'Loading Silie...');
 
@@ -1560,38 +1554,39 @@ const DOOM2 = (() => {
 
     buildCatCafe(scene);
 
-    // Freeze café geometry — these meshes never move so precompute transforms
-    // This is the single biggest perf gain for static scenes
-    scene.meshes.forEach(m => {
-      if (m.name.startsWith('cafe') || m.name.startsWith('bak') ||
-          m.name.startsWith('patio') || m.name.startsWith('sky') ||
-          m.name.startsWith('sun') || m.name.startsWith('cloud') ||
-          m.name.startsWith('grass') || m.name.startsWith('tree') ||
-          m.name.startsWith('trunk') || m.name.startsWith('leaves') ||
-          m.name.startsWith('tab') || m.name.startsWith('seat') ||
-          m.name.startsWith('back') || m.name.startsWith('cleg') ||
-          m.name.startsWith('cushion') || m.name.startsWith('bulb') ||
-          m.name.startsWith('beam') || m.name.startsWith('donut') ||
-          m.name.startsWith('cake') || m.name.startsWith('cup') ||
-          m.name.startsWith('saucer') || m.name.startsWith('muf') ||
-          m.name.startsWith('cof') || m.name.startsWith('cro') ||
-          m.name.startsWith('tart') || m.name.startsWith('spr') ||
-          m.name.startsWith('plant') || m.name.startsWith('flower') ||
-          m.name.startsWith('fl') || m.name.startsWith('umb') ||
-          m.name.startsWith('pTab') || m.name.startsWith('pSeat') ||
-          m.name.startsWith('pBack') || m.name.startsWith('steam') ||
-          m.name.startsWith('menu') || m.name.startsWith('sign') ||
-          m.name.startsWith('npc_cat') // NPC cats excluded — they move
-            ? false : false) {} // placeholder — handled below
-      if (!m.name.startsWith('npc_cat') &&
-          !m.name.startsWith('remote_') &&
-          !m.name.startsWith('silie') &&
-          !m.name.startsWith('meow_cat') &&
-          m.name !== 'cam') {
-        try { m.freezeWorldMatrix(); } catch(e) {}
-      }
+    // ── Scene ready: set collisions then freeze decorations (order matters!) ────
+    scene.onReadyObservable.addOnce(() => {
+      // 1. First pass: assign checkCollisions on structural meshes
+      const FLOOR_PFX = ['hub_floor','hub_ceil','corr_','roomA','roomB','roomC','roomD','roomE','roomF',
+                         'cafeFloor','cafeW_','cafeCon','cafeConn','patio','patioW'];
+      scene.meshes.forEach(m => {
+        m.checkCollisions = FLOOR_PFX.some(p => m.name.startsWith(p));
+      });
+
+      // 2. Second pass: freeze ONLY decorative meshes (NOT collision meshes)
+      const DECO_PFX = ['bak','tab','seat','back_','cleg','cushion','bulb','beam',
+                        'donut','cake','cup','saucer','muf','cof','cro','tart','spr',
+                        'plant','flower','fl','umb','pTab','pSeat','pBack','steam',
+                        'menu','sign','sky','sun','cloud','grass','trunk','leaves',
+                        'pot','chk','mMark','mBar','tring','pawTip','chest','chin'];
+      scene.meshes.forEach(m => {
+        const isDeco = DECO_PFX.some(p => m.name.startsWith(p));
+        const isPlayer = m.name.startsWith('npc_cat') || m.name.startsWith('remote_') ||
+                         m.name.startsWith('silie') || m.name.startsWith('meow_cat') ||
+                         m.name.startsWith('other_');
+        if (isDeco && !isPlayer) {
+          try { m.freezeWorldMatrix(); m.isPickable = false; } catch(e) {}
+        }
+      });
+
+      // 3. Enable gravity 800ms after scene ready (models + physics settled)
+      setTimeout(() => {
+        camera.applyGravity = true;
+        console.log('[doom2] Gravity enabled');
+      }, 800);
+
+      console.log('[doom2] Scene ready, collisions set, decorations frozen');
     });
-    // Reduce fog distance to cut overdraw
     scene.fogEnd = 75;
 
     // ── Roaming NPC Meow Cats ────────────────────────────────────────────────
