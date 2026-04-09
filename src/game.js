@@ -540,7 +540,7 @@ const DOOM2 = (() => {
 
         if (cloned) {
           cloned.name = 'remote_' + msg.id;
-          cloned.getChildMeshes(false).forEach(m => { m.isVisible = true; m.setEnabled(true); });
+          cloned.getChildMeshes(true).forEach(m => { m.isVisible = true; m.setEnabled(true); });
           if (template.scaling) cloned.scaling = template.scaling.clone();
           node = cloned;
         } else {
@@ -549,7 +549,7 @@ const DOOM2 = (() => {
           if (template.scaling) root.scaling = template.scaling.clone();
           template.getChildMeshes(false).forEach(m => {
             const c = m.clone('r_' + msg.id + '_' + m.name, root);
-            if (c) { c.isVisible = true; c.setEnabled(true); }
+            if (c) { c.isVisible = true; c.setEnabled(true); c.getChildMeshes(true).forEach(gc=>{gc.isVisible=true;gc.setEnabled(true);}); }
           });
           node = root;
         }
