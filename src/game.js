@@ -517,18 +517,17 @@ const DOOM2 = (() => {
         node = buildMeowCat(scene_ref, 'remote_' + msg.id);
         node._baseY = 0;
       } else {
-        // Pick correct template based on remote's chosen character
-        let template;
-        if (remoteChar === chosenCharacter) {
-          template = silieRoot; // same char as us
-        } else {
-          template = window._otherCharRoot || silieRoot; // other char
-        }
+        // Pick correct template — must match remote's chosen character exactly
+        const isSameChar = remoteChar === chosenCharacter;
+        const template = isSameChar ? silieRoot : window._otherCharRoot;
         if (!template) {
-          console.log('[doom2] No template yet for', remoteChar, '- will retry');
+          // Other char not loaded yet — queue and retry when it loads
+          window._pendingRemotes = window._pendingRemotes || {};
+          window._pendingRemotes[msg.id] = msg;
+          console.log('[doom2] Queued remote', msg.id, 'waiting for', remoteChar, 'template');
           return;
         }
-        console.log('[doom2] Cloning', remoteChar, 'template:', template.name, 'scaling:', template.scaling);
+        console.log('[doom2] Cloning', remoteChar, 'from', template.name);
 
         // Try instantiateHierarchy (GLB meshes)
         let cloned = null;
@@ -1033,7 +1032,7 @@ const DOOM2 = (() => {
         });
         // Set root y so feet sit exactly at y=0
         root.position.set(3, -minY2, 3);
-        window._myFloorOffset = minY2; // broadcast so remotes floor-align correctly
+        window._myFloorOffset = 1.8; // fixed eye height (minY2 unreliable on GLTF)
         console.log(`[doom2] char bounds: rawH=${rawH.toFixed(2)} scale=${scale.toFixed(3)} minY2=${minY2.toFixed(3)}`);
 
         // Store for cloning remote players (this player's chosen char)
@@ -1066,6 +1065,11 @@ const DOOM2 = (() => {
             window._otherCharRoot = otherRoot;
             if (r.animationGroups?.length > 0) r.animationGroups[0].stop();
             console.log('[doom2] Other char pre-loaded:', otherFile);
+        // Retry remotes that were queued waiting for this template
+        if (window._pendingRemotes) {
+          Object.values(window._pendingRemotes).forEach(m => handleRemotePlayer(m));
+          window._pendingRemotes = {};
+        }
           }
         }).catch(() => {});
 
