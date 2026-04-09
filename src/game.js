@@ -241,7 +241,7 @@ const DOOM2 = (() => {
 
 
   // ── Cartoon Cat: realistic cat anatomy for NPCs ──────────────────────────
-  function buildCartoonCat(scene, name, furColor, accentColor) {
+  function buildCartoonCat(scene, name, furColor, accentColor, tabbyMode) {
     const root = new BABYLON.TransformNode(name, scene);
     const S = 0.38; // ~38cm — small roaming cat
 
@@ -379,6 +379,77 @@ const DOOM2 = (() => {
       );
       stripe.position.set(ox * S * 0.4, S * 0.7, 0);
     });
+
+    // ── Real tabby features (only when tabbyMode=true) ─────────────────────
+    if (tabbyMode) {
+      const whitePatchMat = mk('wPatch', [0.98, 0.97, 0.95], [0.04, 0.04, 0.04]);
+      const deepOrangeMat = mk('dOrange', [0.6, 0.25, 0.02], [0.08, 0.02, 0.0]);
+
+      // White chest/belly patch
+      const chest = attach(
+        BABYLON.MeshBuilder.CreateSphere('chest',
+          { diameterX: S*0.55, diameterY: S*0.5, diameterZ: S*0.4, segments: 8 }, scene),
+        whitePatchMat
+      );
+      chest.position.set(S*0.15, S*0.5, 0);
+
+      // White chin
+      const chin = attach(
+        BABYLON.MeshBuilder.CreateSphere('chin', { diameter: S*0.28, segments: 6 }, scene),
+        whitePatchMat
+      );
+      chin.position.set(S*0.9, S*0.88, 0);
+
+      // M-marking on forehead: 3 ridges above eyes
+      [-0.18, 0, 0.18].forEach((oz, mi) => {
+        const mMark = attach(
+          BABYLON.MeshBuilder.CreateBox('mMark' + mi,
+            { width: S*0.06, height: S*0.09, depth: S*0.05 }, scene),
+          deepOrangeMat
+        );
+        mMark.position.set(S*0.82, S*1.22, oz*S);
+      });
+      const mBar = attach(
+        BABYLON.MeshBuilder.CreateBox('mBar',
+          { width: S*0.05, height: S*0.04, depth: S*0.44 }, scene),
+        deepOrangeMat
+      );
+      mBar.position.set(S*0.82, S*1.18, 0);
+
+      // Cheek stripes
+      [-1,1].forEach((side, si) => {
+        [0, 0.1].forEach((dy, di) => {
+          const cs = attach(
+            BABYLON.MeshBuilder.CreateBox('chkStr'+si+'_'+di,
+              { width: S*0.18, height: S*0.035, depth: S*0.04 }, scene),
+            deepOrangeMat
+          );
+          cs.position.set(S*0.75, S*(1.0-dy), side*S*0.35);
+        });
+      });
+
+      // Banded tail rings (alternating colors)
+      for (let ri = 0; ri < 4; ri++) {
+        const ring = attach(
+          BABYLON.MeshBuilder.CreateTorus('tring' + ri,
+            { diameter: S*0.22, thickness: S*0.055, tessellation: 10 }, scene),
+          ri % 2 === 0 ? deepOrangeMat : accentMat
+        );
+        ring.position.set(-S*(0.3 + ri*0.15), S*(0.6 + ri*0.12), 0);
+        ring.rotation.x = Math.PI/2;
+        ring.rotation.z = 0.4 + ri*0.1;
+      }
+
+      // White paw tips
+      [[-0.32,-0.28],[-0.32,0.28],[0.32,-0.28],[0.32,0.28]].forEach(([lx,lz], pi) => {
+        const tip = attach(
+          BABYLON.MeshBuilder.CreateSphere('pawTip'+pi,
+            { diameterX: S*0.14, diameterY: S*0.06, diameterZ: S*0.17, segments: 5 }, scene),
+          whitePatchMat
+        );
+        tip.position.set(lx*S*1.0, S*-0.01, lz*S*1.0);
+      });
+    }
 
     // Gentle sit-bob animation
     let t = Math.random() * Math.PI * 2;
@@ -1143,6 +1214,10 @@ const DOOM2 = (() => {
     function spawnRoamingCats(scene) {
       // Meow sound via Web Audio API (synthesized — no file needed)
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Resume AudioContext on first user gesture (browser policy)
+      const resumeAudio = () => { audioCtx.resume(); document.removeEventListener('click', resumeAudio); document.removeEventListener('keydown', resumeAudio); };
+      document.addEventListener('click', resumeAudio);
+      document.addEventListener('keydown', resumeAudio);
 
       function playMeow() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -1167,13 +1242,13 @@ const DOOM2 = (() => {
       catStartPositions.forEach((startPos, i) => {
         // 4 different cat color combos
       const catColors = [
-        [[0.8, 0.5, 0.2],  [0.4, 0.2, 0.05]],  // orange tabby
-        [[0.85, 0.85, 0.85],[0.5, 0.5, 0.5]],   // grey cat
-        [[0.15, 0.12, 0.1], [0.35, 0.28, 0.2]], // dark brown/black
-        [[0.9, 0.85, 0.7],  [0.6, 0.45, 0.25]], // cream/tan
+        [[0.88, 0.52, 0.15], [0.42, 0.18, 0.02], true],  // orange tabby (tabbyMode)
+        [[0.85, 0.85, 0.85], [0.5, 0.5, 0.5],   false],  // grey
+        [[0.15, 0.12, 0.1],  [0.35, 0.28, 0.2], false],  // dark
+        [[0.9, 0.85, 0.7],   [0.6, 0.45, 0.25], false],  // cream
       ];
-      const [fur, accent] = catColors[i % catColors.length];
-      const cat = buildCartoonCat(scene, 'npc_cat_' + i, fur, accent);
+      const [fur, accent, tabbyMode] = catColors[i % catColors.length];
+      const cat = buildCartoonCat(scene, 'npc_cat_' + i, fur, accent, tabbyMode);
       cat.position.set(...startPos);
       cat._baseY = startPos[1];
 
