@@ -1692,7 +1692,65 @@ const DOOM2 = (() => {
       ];
 
       catStartPositions.forEach((startPos, i) => {
-        // 4 different cat color combos
+        // 4 different cat types — 3 procedural, 1 voxel kotek
+      if (i === 2) {
+        // Voxel kotek (kotek.glb) — load async, place when ready
+        BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', 'kotek.glb', scene).then(r => {
+          const kr = r.meshes.find(m => !m.parent) || r.meshes[0];
+          if (kr) {
+            kr.computeWorldMatrix(true);
+            const kb = r.meshes.reduce((acc, m) => {
+              if (!m.getBoundingInfo) return acc;
+              const bi = m.getBoundingInfo().boundingBox;
+              return {
+                minY: Math.min(acc.minY, bi.minimumWorld.y),
+                maxY: Math.max(acc.maxY, bi.maximumWorld.y),
+              };
+            }, {minY: Infinity, maxY: -Infinity});
+            const kh = kb.maxY - kb.minY;
+            const ks = kh > 0 ? 0.35 / kh : 0.01; // target ~35cm tall
+            kr.scaling.setAll(ks);
+            r.meshes.forEach(m => m.computeWorldMatrix(true));
+            const kb2 = r.meshes.reduce((acc, m) => {
+              if (!m.getBoundingInfo) return acc;
+              return Math.min(acc, m.getBoundingInfo().boundingBox.minimumWorld.y);
+            }, Infinity);
+            kr.position.set(startPos[0], -kb2, startPos[2]);
+            kr._baseY = -kb2;
+            // Enable vertex colors
+            r.meshes.forEach(m => {
+              if (m.material) { m.material.vertexColorsEnabled = true; }
+            });
+            // Bob animation
+            let vt = Math.random()*6;
+            scene.onBeforeRenderObservable.add(() => {
+              vt += 0.025;
+              kr.position.y = (kr._baseY || 0) + Math.sin(vt)*0.02;
+            });
+            // Wander — reuse same AI as other cats
+            let vtargetX = startPos[0], vtargetZ = startPos[2];
+            let vpausing = false, vpauseTimer = 0;
+            let vmeowTimer = 3 + Math.random()*7;
+            scene.onBeforeRenderObservable.add(() => {
+              const dt = engine.getDeltaTime()/1000;
+              vmeowTimer -= dt;
+              if (vmeowTimer <= 0) {
+                if (window._meowEnabled !== false) playMeow();
+                vmeowTimer = 4 + Math.random()*8;
+              }
+              if (vpausing) { vpauseTimer -= dt; if (vpauseTimer <= 0) { vpausing=false; vtargetX=startPos[0]+(Math.random()-0.5)*14; vtargetZ=startPos[2]+(Math.random()-0.5)*14; vtargetX=Math.max(-9,Math.min(9,vtargetX)); vtargetZ=Math.max(-9,Math.min(9,vtargetZ)); } return; }
+              const dx=vtargetX-kr.position.x, dz=vtargetZ-kr.position.z;
+              const dist=Math.sqrt(dx*dx+dz*dz);
+              if (dist<0.3) { vpausing=true; vpauseTimer=1+Math.random()*3; return; }
+              kr.position.x += (dx/dist)*0.025;
+              kr.position.z += (dz/dist)*0.025;
+              kr.rotation.y = Math.atan2(dx, dz);
+            });
+            console.log('[doom2] Voxel kotek loaded!');
+          }
+        }).catch(e => console.warn('[doom2] kotek.glb failed:', e.message));
+        return; // skip rest of loop body for this cat
+      }
       const catColors = [
         [[0.88, 0.52, 0.15], [0.42, 0.18, 0.02], true],  // orange tabby (tabbyMode)
         [[0.85, 0.85, 0.85], [0.5, 0.5, 0.5],   false],  // grey
