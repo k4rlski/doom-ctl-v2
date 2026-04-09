@@ -374,3 +374,23 @@ Last known-good with café: commit `2f9fa02`
 **NPC cats are procedural code** — no file needed, no download weight.
 Replacing them with GLB would add ~2-10MB per cat × 4 = significant load.
 Only worth it for photorealistic cats.
+
+---
+
+## NPC Cat System (current: 2026-04-09)
+
+### Active NPCs
+- **4 roaming kotek cats** — sprites/kotek.glb (184KB voxel model from Goxel)
+- Vertex colors: m.material.vertexColorsEnabled = true (Goxel bakes color into vertices)
+- Auto-scaled to 35cm, floor-aligned via bounding box scan
+- Roam AI: waypoint pick -> walk -> pause -> new waypoint (hub + cafe spawn positions)
+- Meow: Web Audio synthesized, staggered timer per cat, gated by window._meowEnabled
+
+### Archived procedural cats (docs/saved-cats.js)
+- buildCartoonCat(): orange tabby (M mark, white chest/chin, banded tail, cheek stripes), grey, dark, cream
+- Not deleted -- see docs/npc-cats.md for 3-step restore guide
+
+### kotek.glb conversion
+blender --background --python convert_kotek.py
+(obj_import + vertex color material + export_scene.gltf)
+
