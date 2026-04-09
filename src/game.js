@@ -27,12 +27,16 @@ const DOOM2 = (() => {
         position:fixed; inset:0; z-index:100;
         background:#04010a;
         display:flex; flex-direction:column;
-        align-items:center; justify-content:center;
+        align-items:center; justify-content:flex-start;
         font-family:'Courier New',monospace; color:#fff;
+        overflow-y:auto; overflow-x:hidden;
+        -webkit-overflow-scrolling:touch;
+        padding:20px 12px 40px;
+        box-sizing:border-box;
       `;
 
       overlay.innerHTML = `
-        <div style="text-align:center; margin-bottom:2.5rem;">
+        <div style="text-align:center; margin-bottom:1.5rem; margin-top:0.5rem;">
           <div style="font-size:0.75rem; letter-spacing:0.3em; color:#ff00cc; text-transform:uppercase; margin-bottom:0.5rem;">
             doom-ctl v2
           </div>
@@ -44,11 +48,11 @@ const DOOM2 = (() => {
           </p>
         </div>
 
-        <div style="display:flex; gap:3rem; justify-content:center; flex-wrap:wrap;">
+        <div style="display:flex; gap:1.5rem; justify-content:center; flex-wrap:wrap; width:100%; max-width:760px;">
 
           <!-- Silie -->
           <div class="char-card" data-char="silie" style="
-            cursor:pointer; width:220px; border:2px solid #550055;
+            cursor:pointer; width:min(220px, 85vw); border:2px solid #550055;
             border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
             background:linear-gradient(160deg,#1a0022 0%,#0a000f 100%);
             text-align:center; transition:all 0.2s;
@@ -72,7 +76,7 @@ const DOOM2 = (() => {
           
           <!-- Meow Cat -->
           <div class="char-card" data-char="meow" style="
-            cursor:pointer; width:220px; border:2px solid #003355;
+            cursor:pointer; width:min(220px, 85vw); border:2px solid #003355;
             border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
             background:linear-gradient(160deg,#00101a 0%,#000a12 100%);
             text-align:center; transition:all 0.2s;
@@ -96,7 +100,7 @@ const DOOM2 = (() => {
 
 <!-- Toca Prin-Wolf -->
           <div class="char-card" data-char="toca" style="
-            cursor:pointer; width:220px; border:2px solid #330055;
+            cursor:pointer; width:min(220px, 85vw); border:2px solid #330055;
             border-radius:12px; padding:1.8rem 1.5rem 1.5rem;
             background:linear-gradient(160deg,#100020 0%,#06000f 100%);
             text-align:center; transition:all 0.2s;
