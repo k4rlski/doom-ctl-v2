@@ -469,6 +469,16 @@ const DOOM2 = (() => {
     console.log('[chat]', sender + ':', text);
   };
 
+  // Cap PBR materials to 4 lights — scene has 19 lights which exceeds
+  // WebGL2's 15 uniform block limit, causing shader compile failures.
+  function capLights(meshes) {
+    meshes.forEach(m => {
+      if (m.material && m.material.maxSimultaneousLights !== undefined) {
+        m.material.maxSimultaneousLights = 4;
+      }
+    });
+  }
+
   // ── WebSocket / Multiplayer ────────────────────────────────────────────────
   const WS_TOKEN   = 'b571e78fd651706ada84b3d017bab50ba50aa1046d69c44e';
   const myId       = 'p2_' + Math.random().toString(36).slice(2, 7);
@@ -564,7 +574,8 @@ const DOOM2 = (() => {
           });
           root._remoteFloorOffset = minY2;
 
-          // Force visible
+          // Cap PBR lights + force visible
+          capLights(result.meshes);
           result.meshes.forEach(m => {
             m.isVisible = true;
             m.setEnabled(true);
@@ -1036,6 +1047,7 @@ const DOOM2 = (() => {
       const meow = buildMeowCat(scene, 'silie_local');
       meow._baseY = 0; meow.position.set(3, 0, 3); silieRoot = meow;
       BABYLON.SceneLoader.ImportMeshAsync('','sprites/','silie.glb',scene).then(r=>{
+        capLights(r.meshes);
         const or=r.meshes.find(m=>!m.parent)||r.meshes[0];
         if(or){or.position.set(-999,0,-999);or.name='other_char_template';window._otherCharRoot=or;}
       }).catch(()=>{});
@@ -1043,6 +1055,7 @@ const DOOM2 = (() => {
     const charFile = chosenCharacter === 'toca' ? 'toca.glb' : 'silie.glb';
     try {
       const result = await BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', charFile, scene);
+      capLights(result.meshes);
       console.log('[doom2] Character loaded:', charFile, result.meshes.length, 'meshes');
 
       // Find the root and fix scale/orientation
@@ -1082,6 +1095,7 @@ const DOOM2 = (() => {
         // Pre-load the OTHER character silently so remotes using it can be cloned
         const otherFile = chosenCharacter === 'toca' ? 'silie.glb' : 'toca.glb';
         BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', otherFile, scene).then(r => {
+          capLights(r.meshes);
           const otherRoot = r.meshes.find(m => !m.parent) || r.meshes[0];
           if (otherRoot) {
             r.meshes.forEach(m => m.computeWorldMatrix(true));
