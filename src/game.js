@@ -509,11 +509,17 @@ const DOOM2 = (() => {
   function handleRemotePlayer(msg) {
     if (!scene_ref) return;
 
+    // Keep-alive: update lastSeen on EVERY message, even while GLB is loading.
+    // Without this, the 5s prune timer kills the entry mid-load, orphaning meshes.
+    if (remotes[msg.id]) {
+      remotes[msg.id].lastSeen = Date.now();
+      remotes[msg.id]._lastMsg = msg;
+    }
+
     if (!remotes[msg.id]) {
       const remoteChar = msg.char || 'silie';
-
-      // Reserve slot immediately to prevent duplicate loads
-      remotes[msg.id] = { node: null, lastSeen: Date.now() };
+      const loadId = Math.random();
+      remotes[msg.id] = { node: null, lastSeen: Date.now(), _loadId: loadId, _lastMsg: msg };
 
       if (remoteChar === 'meow') {
         const node = buildMeowCat(scene_ref, 'remote_' + msg.id);
@@ -521,18 +527,22 @@ const DOOM2 = (() => {
         remotes[msg.id].node = node;
         console.log('[doom2] Remote joined:', msg.id, 'as meow');
       } else {
-        // Load a fresh independent GLB for each remote player.
-        // Browser cache means no re-download — just new mesh/skeleton instances.
         const charFile = remoteChar === 'toca' ? 'toca.glb' : 'silie.glb';
-        console.log('[doom2] Loading fresh', charFile, 'for remote', msg.id);
+        console.log('[doom2] Loading', charFile, 'for remote', msg.id);
 
         BABYLON.SceneLoader.ImportMeshAsync('', 'sprites/', charFile, scene_ref).then(result => {
-          if (!remotes[msg.id]) return; // pruned while loading
+          // If entry was pruned or recreated since we started, dispose orphans
+          if (!remotes[msg.id] || remotes[msg.id]._loadId !== loadId) {
+            result.meshes.forEach(m => m.dispose());
+            if (result.animationGroups) result.animationGroups.forEach(ag => ag.dispose());
+            console.log('[doom2] Discarded stale load for', msg.id);
+            return;
+          }
 
           const root = result.meshes.find(m => !m.parent) || result.meshes[0];
           root.name = 'remote_' + msg.id;
 
-          // Scale to 1.8m using bounding box (same logic as local player)
+          // Scale to 1.8m
           result.meshes.forEach(m => m.computeWorldMatrix(true));
           let minY = Infinity, maxY = -Infinity;
           result.meshes.forEach(m => {
@@ -542,8 +552,7 @@ const DOOM2 = (() => {
             maxY = Math.max(maxY, bi.boundingBox.maximumWorld.y);
           });
           const rawH = maxY - minY;
-          const scale = (rawH > 0.1 && rawH < 1000) ? 1.8 / rawH : 1.0;
-          root.scaling.setAll(scale);
+          root.scaling.setAll((rawH > 0.1 && rawH < 1000) ? 1.8 / rawH : 1.0);
 
           // Floor-align
           result.meshes.forEach(m => m.computeWorldMatrix(true));
@@ -555,35 +564,44 @@ const DOOM2 = (() => {
           });
           root._remoteFloorOffset = minY2;
 
-          // Force all meshes visible
+          // Force visible
           result.meshes.forEach(m => {
             m.isVisible = true;
             m.setEnabled(true);
             m.visibility = 1;
           });
 
-          // Play idle animation if available
           if (result.animationGroups?.length > 0) {
             result.animationGroups[0].start(true);
           }
 
           remotes[msg.id].node = root;
           remotes[msg.id]._animGroups = result.animationGroups;
-          console.log('[doom2] Remote loaded:', msg.id, 'as', remoteChar, result.meshes.length, 'meshes');
+
+          // Place at last known position immediately (don't wait for next WS tick)
+          const lm = remotes[msg.id]._lastMsg;
+          if (lm) {
+            const fo2 = (lm.fo !== undefined) ? lm.fo : 1.8;
+            root.position.set(lm.x || 0, (lm.y || 1.8) - fo2 - (root._remoteFloorOffset || 0), lm.z || 0);
+          }
+
+          console.log('[doom2] Remote loaded:', msg.id, 'as', remoteChar,
+            result.meshes.length, 'meshes, pos:', root.position.toString());
         }).catch(e => {
           console.warn('[doom2] Failed to load remote', msg.id, ':', e.message);
-          delete remotes[msg.id];
+          if (remotes[msg.id] && remotes[msg.id]._loadId === loadId) {
+            delete remotes[msg.id];
+          }
         });
       }
     }
 
+    // Update position (skip if GLB still loading)
     const r = remotes[msg.id];
-    if (!r || !r.node) return; // still loading
+    if (!r || !r.node) return;
     const eyeH = 1.8;
     const fo = (msg.fo !== undefined) ? msg.fo : eyeH;
-    const floorAdj = r.node._remoteFloorOffset || 0;
-    r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo - floorAdj, msg.z || 0);
-    r.lastSeen = Date.now();
+    r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo - (r.node._remoteFloorOffset || 0), msg.z || 0);
   }
 
   function removeRemotePlayer(id) {
