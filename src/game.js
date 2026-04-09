@@ -1305,6 +1305,169 @@ const DOOM2 = (() => {
     // Spawn cats after a short delay (so audio context can activate on user gesture)
     setTimeout(() => spawnRoamingCats(scene), 2000);
 
+
+    // ── Touch / iPad Controls ─────────────────────────────────────────────────
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (isTouchDevice) {
+
+      // ── Left joystick (movement) ────────────────────────────────────────────
+      const joystickWrap = document.createElement('div');
+      joystickWrap.style.cssText = `
+        position:fixed; left:32px; bottom:110px; width:130px; height:130px;
+        border-radius:50%; border:2px solid rgba(255,0,204,0.4);
+        background:rgba(0,0,0,0.35); touch-action:none; z-index:30;
+        display:flex; align-items:center; justify-content:center;
+      `;
+      const joystickKnob = document.createElement('div');
+      joystickKnob.style.cssText = `
+        width:52px; height:52px; border-radius:50%;
+        background:rgba(255,0,204,0.55); border:2px solid rgba(255,0,204,0.8);
+        position:absolute; left:50%; top:50%;
+        transform:translate(-50%,-50%); transition:background 0.1s;
+        pointer-events:none;
+      `;
+      joystickWrap.appendChild(joystickKnob);
+      document.body.appendChild(joystickWrap);
+
+      let joyActive = false, joyTouchId = null;
+      let joyBaseX = 0, joyBaseY = 0;
+      let moveX = 0, moveZ = 0;
+      const JOY_MAX = 48;
+
+      joystickWrap.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.changedTouches[0];
+        joyActive = true; joyTouchId = t.identifier;
+        const r = joystickWrap.getBoundingClientRect();
+        joyBaseX = r.left + r.width/2;
+        joyBaseY = r.top  + r.height/2;
+      }, { passive: false });
+
+      document.addEventListener('touchmove', e => {
+        if (!joyActive) return;
+        for (const t of e.changedTouches) {
+          if (t.identifier !== joyTouchId) continue;
+          let dx = t.clientX - joyBaseX;
+          let dy = t.clientY - joyBaseY;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist > JOY_MAX) { dx = dx/dist*JOY_MAX; dy = dy/dist*JOY_MAX; }
+          joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+          moveX = dx / JOY_MAX;
+          moveZ = dy / JOY_MAX;
+        }
+      }, { passive: true });
+
+      const endJoy = e => {
+        for (const t of e.changedTouches) {
+          if (t.identifier === joyTouchId) {
+            joyActive = false; joyTouchId = null;
+            moveX = 0; moveZ = 0;
+            joystickKnob.style.transform = 'translate(-50%,-50%)';
+          }
+        }
+      };
+      document.addEventListener('touchend', endJoy);
+      document.addEventListener('touchcancel', endJoy);
+
+      // Apply joystick to camera each frame
+      scene.onBeforeRenderObservable.add(() => {
+        if (!joyActive) return;
+        const speed = 0.18;
+        const fwd = camera.getDirection(BABYLON.Vector3.Forward());
+        const right = camera.getDirection(BABYLON.Vector3.Right());
+        fwd.y = 0; fwd.normalize();
+        right.y = 0; right.normalize();
+        camera.position.addInPlace(fwd.scale(-moveZ * speed));
+        camera.position.addInPlace(right.scale(moveX * speed));
+      });
+
+      // ── Right-side look (touch drag) ────────────────────────────────────────
+      let lookTouchId = null, lastLookX = 0, lastLookY = 0;
+
+      document.addEventListener('touchstart', e => {
+        for (const t of e.changedTouches) {
+          if (t.clientX > window.innerWidth * 0.45 && t.identifier !== joyTouchId) {
+            lookTouchId = t.identifier;
+            lastLookX = t.clientX;
+            lastLookY = t.clientY;
+          }
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchmove', e => {
+        for (const t of e.changedTouches) {
+          if (t.identifier !== lookTouchId) continue;
+          const dx = t.clientX - lastLookX;
+          const dy = t.clientY - lastLookY;
+          lastLookX = t.clientX;
+          lastLookY = t.clientY;
+          camera.rotation.y += dx * 0.004;
+          camera.rotation.x += dy * 0.003;
+          camera.rotation.x = Math.max(-1.2, Math.min(1.2, camera.rotation.x));
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchend', e => {
+        for (const t of e.changedTouches) {
+          if (t.identifier === lookTouchId) lookTouchId = null;
+        }
+      });
+
+      // ── Jump button ─────────────────────────────────────────────────────────
+      const jumpBtn = document.createElement('div');
+      jumpBtn.textContent = '⬆';
+      jumpBtn.style.cssText = `
+        position:fixed; right:32px; bottom:170px;
+        width:72px; height:72px; border-radius:50%;
+        background:rgba(0,0,0,0.45); border:2px solid rgba(255,0,204,0.5);
+        color:#ff00cc; font-size:2rem; display:flex;
+        align-items:center; justify-content:center;
+        touch-action:none; z-index:30; user-select:none;
+      `;
+      document.body.appendChild(jumpBtn);
+      jumpBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (!jumping) { jumping = true; jumpVel = 7; }
+      }, { passive: false });
+
+      // ── Chat button (opens/closes keyboard on touch) ─────────────────────────
+      const chatBtn = document.createElement('div');
+      chatBtn.textContent = '💬';
+      chatBtn.style.cssText = `
+        position:fixed; right:32px; bottom:82px;
+        width:60px; height:60px; border-radius:50%;
+        background:rgba(0,0,0,0.45); border:2px solid rgba(255,0,204,0.4);
+        font-size:1.6rem; display:flex; align-items:center; justify-content:center;
+        touch-action:none; z-index:30;
+      `;
+      document.body.appendChild(chatBtn);
+      chatBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        chatInput.focus();
+      }, { passive: false });
+
+      // ── D-pad label hints ───────────────────────────────────────────────────
+      const padLabel = document.createElement('div');
+      padLabel.style.cssText = `
+        position:fixed; left:32px; bottom:82px;
+        font-family:'Courier New',monospace; font-size:0.65rem;
+        color:rgba(255,0,204,0.5); z-index:30; pointer-events:none;
+        text-align:center; width:130px;
+      `;
+      padLabel.textContent = 'MOVE';
+      document.body.appendChild(padLabel);
+
+      const lookLabel = document.createElement('div');
+      lookLabel.style.cssText = `
+        position:fixed; right:120px; bottom:220px;
+        font-family:'Courier New',monospace; font-size:0.65rem;
+        color:rgba(255,0,204,0.4); z-index:30; pointer-events:none;
+      `;
+      lookLabel.textContent = 'drag to look';
+      document.body.appendChild(lookLabel);
+
+    } // end isTouchDevice
+
     setProgress(98, 'Starting...');
     engine.runRenderLoop(() => scene.render());
 
