@@ -1313,11 +1313,11 @@ const DOOM2 = (() => {
       signMat2.diffuseTexture=signTex; signMat2.emissiveTexture=signTex;
       signMat2.emissiveColor=new BABYLON.Color3(1,1,1); signMat2.backFaceCulling=false;
       const signPlane=BABYLON.MeshBuilder.CreatePlane('ccSign',{width:9,height:2.2},scene);
-      signPlane.position.set(CX, 3.8, CZ-CD/2+0.4);
+      signPlane.position.set(CX, 2.6, CZ-CD/2+0.4);
       signPlane.rotation.y = Math.PI;
       signPlane.material=signMat2;
       // Pink glow light under sign
-      const signLight=new BABYLON.PointLight('ccSignLight',new BABYLON.Vector3(CX,3,CZ-CD/2+1),scene);
+      const signLight=new BABYLON.PointLight('ccSignLight',new BABYLON.Vector3(CX,2.3,CZ-CD/2+1),scene);
       signLight.diffuse=new BABYLON.Color3(1,0.1,0.6); signLight.intensity=1.2; signLight.range=10;
 
       // ── Bakery display counter ──────────────────────────────────────────────
