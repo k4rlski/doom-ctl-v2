@@ -1311,16 +1311,24 @@ const DOOM2 = (() => {
     if (isTouchDevice) {
 
       // ── Left joystick (movement) ────────────────────────────────────────────
+      // Scale UI for phone vs tablet
+      const isPhone = window.innerWidth < 768 || window.innerHeight < 768;
+      const joySize   = isPhone ? 100 : 130;
+      const knobSize  = isPhone ?  40 :  52;
+      const joyBottom = isPhone ?  90 : 110;
+      const btnSize   = isPhone ?  58 :  72;
+
       const joystickWrap = document.createElement('div');
       joystickWrap.style.cssText = `
-        position:fixed; left:32px; bottom:110px; width:130px; height:130px;
+        position:fixed; left:24px; bottom:${joyBottom}px;
+        width:${joySize}px; height:${joySize}px;
         border-radius:50%; border:2px solid rgba(255,0,204,0.4);
         background:rgba(0,0,0,0.35); touch-action:none; z-index:30;
         display:flex; align-items:center; justify-content:center;
       `;
       const joystickKnob = document.createElement('div');
       joystickKnob.style.cssText = `
-        width:52px; height:52px; border-radius:50%;
+        width:${knobSize}px; height:${knobSize}px; border-radius:50%;
         background:rgba(255,0,204,0.55); border:2px solid rgba(255,0,204,0.8);
         position:absolute; left:50%; top:50%;
         transform:translate(-50%,-50%); transition:background 0.1s;
@@ -1332,7 +1340,7 @@ const DOOM2 = (() => {
       let joyActive = false, joyTouchId = null;
       let joyBaseX = 0, joyBaseY = 0;
       let moveX = 0, moveZ = 0;
-      const JOY_MAX = 48;
+      const JOY_MAX = isPhone ? 36 : 48;
 
       joystickWrap.addEventListener('touchstart', e => {
         e.preventDefault();
@@ -1417,10 +1425,10 @@ const DOOM2 = (() => {
       const jumpBtn = document.createElement('div');
       jumpBtn.textContent = '⬆';
       jumpBtn.style.cssText = `
-        position:fixed; right:32px; bottom:170px;
-        width:72px; height:72px; border-radius:50%;
+        position:fixed; right:24px; bottom:${isPhone ? 140 : 170}px;
+        width:${btnSize}px; height:${btnSize}px; border-radius:50%;
         background:rgba(0,0,0,0.45); border:2px solid rgba(255,0,204,0.5);
-        color:#ff00cc; font-size:2rem; display:flex;
+        color:#ff00cc; font-size:${isPhone ? '1.5' : '2'}rem; display:flex;
         align-items:center; justify-content:center;
         touch-action:none; z-index:30; user-select:none;
       `;
@@ -1434,8 +1442,8 @@ const DOOM2 = (() => {
       const chatBtn = document.createElement('div');
       chatBtn.textContent = '💬';
       chatBtn.style.cssText = `
-        position:fixed; right:32px; bottom:82px;
-        width:60px; height:60px; border-radius:50%;
+        position:fixed; right:24px; bottom:${isPhone ? 68 : 82}px;
+        width:${isPhone ? 48 : 60}px; height:${isPhone ? 48 : 60}px; border-radius:50%;
         background:rgba(0,0,0,0.45); border:2px solid rgba(255,0,204,0.4);
         font-size:1.6rem; display:flex; align-items:center; justify-content:center;
         touch-action:none; z-index:30;
@@ -1449,7 +1457,7 @@ const DOOM2 = (() => {
       // ── D-pad label hints ───────────────────────────────────────────────────
       const padLabel = document.createElement('div');
       padLabel.style.cssText = `
-        position:fixed; left:32px; bottom:82px;
+        position:fixed; left:24px; bottom:${isPhone ? 68 : 82}px;
         font-family:'Courier New',monospace; font-size:0.65rem;
         color:rgba(255,0,204,0.5); z-index:30; pointer-events:none;
         text-align:center; width:130px;
