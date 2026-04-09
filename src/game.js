@@ -1670,14 +1670,14 @@ const DOOM2 = (() => {
         }
         newWaypoint();
 
-        let meowTimer = 2 + Math.random() * 6 + i * 1.5;
+        let meowTimer = 8 + Math.random() * 8 + i * 3;
 
         scene.onBeforeRenderObservable.add(() => {
           const dt = engine.getDeltaTime() / 1000;
           meowTimer -= dt;
           if (meowTimer <= 0) {
             if (window._meowEnabled !== false) playMeow();
-            meowTimer = 4 + Math.random() * 8;
+            meowTimer = 10 + Math.random() * 12;
           }
           if (pausing) {
             pauseTimer -= dt;
