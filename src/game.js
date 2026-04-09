@@ -594,7 +594,7 @@ const DOOM2 = (() => {
           if (lm) {
             const fo2 = (lm.fo !== undefined) ? lm.fo : 1.8;
             root.position.set(lm.x || 0, (lm.y || 1.8) - fo2 - (root._remoteFloorOffset || 0), lm.z || 0);
-            if (lm.angle !== undefined) root.rotation.y = lm.angle;
+            if (lm.angle !== undefined) root.rotation.y = lm.angle + (window._faceOffset || 0);
           }
 
           console.log('[doom2] Remote loaded:', msg.id, 'as', remoteChar,
@@ -615,7 +615,7 @@ const DOOM2 = (() => {
     const fo = (msg.fo !== undefined) ? msg.fo : eyeH;
     r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo - (r.node._remoteFloorOffset || 0), msg.z || 0);
     if (msg.angle !== undefined) {
-      r.node.rotation.y = msg.angle;
+      r.node.rotation.y = msg.angle + (window._faceOffset || 0);
     }
   }
 
@@ -1272,8 +1272,15 @@ const DOOM2 = (() => {
           camera.position.y = Math.max(camera.position.y, 1.82);
           addChatMsg('System', '🦶 Landed. Gravity restored.', '#00ccff'); return;
         }
+        if (text === '/face') {
+          window._faceOffset = ((window._faceOffset || 0) + Math.PI / 4) % (Math.PI * 2);
+          const deg = Math.round(window._faceOffset * 180 / Math.PI);
+          addChatMsg('System', 'Face offset: ' + deg + '° (' + window._faceOffset.toFixed(4) + ' rad). Type /face again to cycle.', '#00ccff');
+          console.log('[doom2] Face offset:', deg, '°', window._faceOffset.toFixed(4), 'rad');
+          return;
+        }
         if (text === '/help') {
-          addChatMsg('System', 'Commands: /fly  /land  /meow  /no-meow  /help', '#888'); return;
+          addChatMsg('System', 'Commands: /fly  /land  /meow  /no-meow  /face  /help', '#888'); return;
         }
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
