@@ -964,7 +964,7 @@ const DOOM2 = (() => {
     buildLevel(scene);
 
     // Collisions only on structural geometry — not crates, pots, signs etc.
-    const COLL_PFX = ['hub_','corr_','room','ceil ','floor','neon'];
+    const COLL_PFX = ['hub_','corr_','room','ceil ','floor','neon','cafeFloor','patio','cafeCon','cafeW_'];
     scene.onReadyObservable.addOnce(() => {
       scene.meshes.forEach(m => {
         m.checkCollisions = COLL_PFX.some(p => m.name.startsWith(p));
@@ -1446,11 +1446,15 @@ const DOOM2 = (() => {
       menuBoard.material=menuMat2;
 
       // ── String lights across ceiling ────────────────────────────────────────
+      // String light bulbs (visual only — fewer actual lights for perf)
       for(let lx=-11;lx<=11;lx+=2.2){
-        const bulb=sph('bulb'+lx, 0.12, CX+lx, 4.2, CZ, mk('bulbM'+lx,[1,0.92,0.5],[1,0.85,0.2]));
-        const bl=new BABYLON.PointLight('bLight'+lx,new BABYLON.Vector3(CX+lx,4.1,CZ),scene);
-        bl.diffuse=new BABYLON.Color3(1,0.9,0.4); bl.intensity=0.18; bl.range=3;
+        sph('bulb'+lx, 0.12, CX+lx, 4.2, CZ, mk('bulbM'+lx,[1,0.92,0.5],[1,0.85,0.2]));
       }
+      // 3 actual point lights spread across ceiling (not one per bulb)
+      [-8,0,8].forEach((lx,li)=>{
+        const bl=new BABYLON.PointLight('cLight'+li,new BABYLON.Vector3(CX+lx,4.0,CZ),scene);
+        bl.diffuse=new BABYLON.Color3(1,0.88,0.4); bl.intensity=0.8; bl.range=12;
+      });
 
       // ═══════════════════════════════════════════════════════════════════════
       // OUTDOOR PATIO beyond south wall
@@ -1458,14 +1462,16 @@ const DOOM2 = (() => {
       const OZ = CZ+CD/2+12; // patio centre
 
       // ── Sky dome ─────────────────────────────────────────────────────────────
-      const sky = BABYLON.MeshBuilder.CreateSphere('skyDome',{diameter:120,segments:12},scene);
-      sky.position.set(CX, 0, OZ);
+      const sky = BABYLON.MeshBuilder.CreateSphere('skyDome',{diameter:110,segments:6},scene);
+      sky.position.set(CX, -5, OZ);
       const skyMatFull = new BABYLON.StandardMaterial('skyFull',scene);
       skyMatFull.diffuseColor  = new BABYLON.Color3(0.42,0.72,0.95);
-      skyMatFull.emissiveColor = new BABYLON.Color3(0.18,0.48,0.88);
+      skyMatFull.emissiveColor = new BABYLON.Color3(0.12,0.35,0.72);
       skyMatFull.backFaceCulling = false;
       skyMatFull.sideOrientation = BABYLON.Mesh.BACKSIDE;
+      skyMatFull.disableLighting = true; // sky ignores scene lights
       sky.material = skyMatFull;
+      sky.isPickable = false;
 
       // Sun
       const sun=sph('sun',3.5, CX+30,35,OZ-20, mk('sunMat',[1,0.97,0.5],[1,0.95,0.2]));
@@ -1473,9 +1479,11 @@ const DOOM2 = (() => {
       sunLight.diffuse=new BABYLON.Color3(1,0.95,0.7); sunLight.intensity=1.5; sunLight.range=200;
 
       // Clouds (groups of spheres)
-      [[CX-15,22,OZ-15],[CX+20,25,OZ-10],[CX-5,28,OZ-25]].forEach(([cx2,cy,cz2],ci)=>{
-        [[0,0,0],[0.7,0.2,0.4],[-0.6,0.15,0.3],[0.35,-0.1,-0.5]].forEach(([dx,dy,dz],di)=>{
-          const cs=sph('cloud'+ci+'_'+di,2.2+Math.random(),cx2+dx*2.5,cy+dy*2,cz2+dz*2,mk('cloudM'+ci+di,[0.97,0.97,0.99],[0.4,0.42,0.48]));
+      // Simplified clouds (2 spheres each instead of 4)
+      [[CX-15,22,OZ-15],[CX+18,24,OZ-10],[CX-3,27,OZ-22]].forEach(([cx2,cy,cz2],ci)=>{
+        [[0,0,0],[0.8,0.15,0.3]].forEach(([dx,dy,dz],di)=>{
+          const cs=sph('cloud'+ci+'_'+di,2.8,cx2+dx*2.5,cy+dy*1.5,cz2+dz*2,mk('cloudM'+ci+di,[0.97,0.97,0.99],[0.35,0.38,0.42]));
+          cs.isPickable=false;
         });
       });
 
@@ -1531,12 +1539,15 @@ const DOOM2 = (() => {
       });
 
       // String lights on patio (zigzag across posts)
+      // Patio string lights (visual bulbs, 2 real lights)
       for(let lx2=-11;lx2<=11;lx2+=2.5){
         const zig=(Math.floor((lx2+11)/2.5))%2===0?OZ-3:OZ+3;
-        const bl2=sph('patBulb'+lx2,0.1,CX+lx2,3.2,zig,mk('patBM'+lx2,[1,0.92,0.5],[1,0.88,0.2]));
-        const pl2=new BABYLON.PointLight('patBL'+lx2,new BABYLON.Vector3(CX+lx2,3.1,zig),scene);
-        pl2.diffuse=new BABYLON.Color3(1,0.9,0.4); pl2.intensity=0.12; pl2.range=3;
+        sph('patBulb'+lx2,0.1,CX+lx2,3.2,zig,mk('patBM'+lx2,[1,0.92,0.5],[1,0.88,0.2]));
       }
+      [-6,6].forEach((lx2,li2)=>{
+        const pl2=new BABYLON.PointLight('patL'+li2,new BABYLON.Vector3(CX+lx2,3.0,OZ),scene);
+        pl2.diffuse=new BABYLON.Color3(1,0.88,0.4); pl2.intensity=0.6; pl2.range=14;
+      });
 
       // Ambient fill light for outdoor
       const outdoorLight=new BABYLON.HemisphericLight('outdoorAmb',new BABYLON.Vector3(0,1,0),scene);
@@ -1548,6 +1559,40 @@ const DOOM2 = (() => {
     }
 
     buildCatCafe(scene);
+
+    // Freeze café geometry — these meshes never move so precompute transforms
+    // This is the single biggest perf gain for static scenes
+    scene.meshes.forEach(m => {
+      if (m.name.startsWith('cafe') || m.name.startsWith('bak') ||
+          m.name.startsWith('patio') || m.name.startsWith('sky') ||
+          m.name.startsWith('sun') || m.name.startsWith('cloud') ||
+          m.name.startsWith('grass') || m.name.startsWith('tree') ||
+          m.name.startsWith('trunk') || m.name.startsWith('leaves') ||
+          m.name.startsWith('tab') || m.name.startsWith('seat') ||
+          m.name.startsWith('back') || m.name.startsWith('cleg') ||
+          m.name.startsWith('cushion') || m.name.startsWith('bulb') ||
+          m.name.startsWith('beam') || m.name.startsWith('donut') ||
+          m.name.startsWith('cake') || m.name.startsWith('cup') ||
+          m.name.startsWith('saucer') || m.name.startsWith('muf') ||
+          m.name.startsWith('cof') || m.name.startsWith('cro') ||
+          m.name.startsWith('tart') || m.name.startsWith('spr') ||
+          m.name.startsWith('plant') || m.name.startsWith('flower') ||
+          m.name.startsWith('fl') || m.name.startsWith('umb') ||
+          m.name.startsWith('pTab') || m.name.startsWith('pSeat') ||
+          m.name.startsWith('pBack') || m.name.startsWith('steam') ||
+          m.name.startsWith('menu') || m.name.startsWith('sign') ||
+          m.name.startsWith('npc_cat') // NPC cats excluded — they move
+            ? false : false) {} // placeholder — handled below
+      if (!m.name.startsWith('npc_cat') &&
+          !m.name.startsWith('remote_') &&
+          !m.name.startsWith('silie') &&
+          !m.name.startsWith('meow_cat') &&
+          m.name !== 'cam') {
+        try { m.freezeWorldMatrix(); } catch(e) {}
+      }
+    });
+    // Reduce fog distance to cut overdraw
+    scene.fogEnd = 75;
 
     // ── Roaming NPC Meow Cats ────────────────────────────────────────────────
     function spawnRoamingCats(scene) {
