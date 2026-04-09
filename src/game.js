@@ -512,8 +512,18 @@ const DOOM2 = (() => {
         node = buildMeowCat(scene_ref, 'remote_' + msg.id);
         node._baseY = 0;
       } else {
-        const template = silieRoot || window._otherCharRoot;
-        if (!template) return; // template not loaded yet
+        // Pick correct template based on remote's chosen character
+        let template;
+        if (remoteChar === chosenCharacter) {
+          template = silieRoot; // same char as us
+        } else {
+          template = window._otherCharRoot || silieRoot; // other char
+        }
+        if (!template) {
+          console.log('[doom2] No template yet for', remoteChar, '- will retry');
+          return;
+        }
+        console.log('[doom2] Cloning', remoteChar, 'template:', template.name, 'scaling:', template.scaling);
 
         // Try instantiateHierarchy (GLB meshes)
         let cloned = null;
@@ -548,7 +558,8 @@ const DOOM2 = (() => {
     if (!r) return;
     const eyeH = 1.8;
     const fo = (msg.fo !== undefined) ? msg.fo : eyeH;
-    r.node.position.set(msg.x || 0, (msg.y || eyeH) - fo, msg.z || 0);
+    const rx = msg.x || 0, ry = (msg.y || eyeH) - fo, rz = msg.z || 0;
+    r.node.position.set(rx, ry, rz);
     r.lastSeen = Date.now();
   }
 
